@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -211,6 +212,8 @@ let canvasElement = null;
 let canvasCtx = null;
 let lastLandmarks = null;
 let snapDataUrl = null;
+let faceDetected = false;    // 新增：人脸检测防抖状态
+let faceLostTimer = null;    // 新增：人脸丢失计时器
 
 // ===================== 工具函数 =====================
 function dist(a, b) { return Math.sqrt((a.x-b.x)**2 + (a.y-b.y)**2); }
@@ -275,9 +278,18 @@ async function startCamera() {
 
   try {
     await camera.start();
-    statusEl.textContent = '\u25CF 正在寻找人脸...';
+    statusEl.textContent = '● 正在寻找人脸...';
     statusEl.className = 'cam-status waiting';
     setTimeout(resizeCanvas, 1000);
+
+    // 移动端触控增强：为快门按钮添加 touchend 监听
+    const shutterBtn = document.getElementById('shutterBtn');
+    shutterBtn.addEventListener('touchend', function(e) {
+      e.preventDefault();  // 阻止默认行为，防止触发 click 的延迟
+      if (!shutterBtn.disabled && lastLandmarks) {
+        captureAndAnalyze();
+      }
+    });
   } catch (e) {
     statusEl.textContent = '\u25CF 摄像头启动失败：' + e.message;
     statusEl.className = 'cam-status error';
@@ -317,20 +329,41 @@ function onFaceResults(results) {
       canvasCtx.fill();
     }
 
-    statusEl.textContent = '\u25CF 已检测到人脸';
+    statusEl.textContent = '● 已检测到人脸';
     statusEl.className = 'cam-status';
-    shutterBtn.disabled = false;
-    document.getElementById('faceGuide').style.opacity = '0';
-    document.getElementById('liveMetrics').style.opacity = '1';
+
+    // 防抖：只有从未检测到人脸时才启用按钮
+    if (!faceDetected) {
+      faceDetected = true;
+      shutterBtn.disabled = false;
+      shutterBtn.style.opacity = '1';
+      document.getElementById('faceGuide').style.opacity = '0';
+      document.getElementById('liveMetrics').style.opacity = '1';
+    }
+    // 清除人脸丢失计时器
+    if (faceLostTimer) {
+      clearTimeout(faceLostTimer);
+      faceLostTimer = null;
+    }
 
     // 实时更新底部指标
     updateLiveMetrics(landmarks);
   } else {
-    statusEl.textContent = '\u25CF 正在寻找人脸...';
-    statusEl.className = 'cam-status waiting';
-    shutterBtn.disabled = true;
-    document.getElementById('faceGuide').style.opacity = '1';
-    document.getElementById('liveMetrics').style.opacity = '0';
+    // 人脸短暂丢失时，不立即禁用按钮，给 2 秒缓冲
+    if (faceDetected && !faceLostTimer) {
+      faceLostTimer = setTimeout(() => {
+        faceDetected = false;
+        shutterBtn.disabled = true;
+        shutterBtn.style.opacity = '0.4';
+        document.getElementById('faceGuide').style.opacity = '1';
+        document.getElementById('liveMetrics').style.opacity = '0';
+        faceLostTimer = null;
+      }, 2000);
+    }
+    if (!faceDetected) {
+      statusEl.textContent = '● 正在寻找人脸...';
+      statusEl.className = 'cam-status waiting';
+    }
   }
   canvasCtx.restore();
 }
@@ -354,47 +387,59 @@ function updateLiveMetrics(lm) {
 
 // ===================== 拍摄与分析 =====================
 function captureAndAnalyze() {
-  if (!lastLandmarks) return;
+  if (!lastLandmarks) {
+    alert('请确保人脸位于画面中央，绿色网格出现后再点击快门');
+    return;
+  }
 
-  // 从 video 帧创建缩略图
-  const tempCanvas = document.createElement('canvas');
-  tempCanvas.width = videoElement.videoWidth;
-  tempCanvas.height = videoElement.videoHeight;
-  const tctx = tempCanvas.getContext('2d');
-  tctx.translate(tempCanvas.width, 0);
-  tctx.scale(-1, 1); // 镜像翻转，让照片看起来正常
-  tctx.drawImage(videoElement, 0, 0, tempCanvas.width, tempCanvas.height);
-  snapDataUrl = tempCanvas.toDataURL('image/jpeg', 0.85);
+  try {
+    // 从 video 帧创建缩略图
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = videoElement.videoWidth || videoElement.clientWidth;
+    tempCanvas.height = videoElement.videoHeight || videoElement.clientHeight;
+    if (tempCanvas.width === 0 || tempCanvas.height === 0) {
+      alert('视频尚未准备好，请稍等 1-2 秒再试');
+      return;
+    }
+    const tctx = tempCanvas.getContext('2d');
+    tctx.translate(tempCanvas.width, 0);
+    tctx.scale(-1, 1); // 镜像翻转，让照片看起来正常
+    tctx.drawImage(videoElement, 0, 0, tempCanvas.width, tempCanvas.height);
+    snapDataUrl = tempCanvas.toDataURL('image/jpeg', 0.85);
 
-  // 停止摄像头
-  if (camera) camera.stop();
+    // 停止摄像头
+    if (camera) camera.stop();
 
-  // 进入分析页
-  goTo('analyzePage');
-  createParticles();
+    // 进入分析页
+    goTo('analyzePage');
+    createParticles();
 
-  // 分析事实轮播
-  const facts = [
-    '正在测量嘴角弧度（关键点 61 & 291）...',
-    '正在计算眼睛纵横比 EAR...',
-    '正在评估面部左右对称性...',
-    '正在提取脸颊区域色彩...'
-  ];
-  const factContainer = document.getElementById('analyzeFacts');
-  factContainer.innerHTML = '';
-  facts.forEach((f, i) => {
+    // 分析事实轮播
+    const facts = [
+      '正在测量嘴角弧度（关键点 61 & 291）...',
+      '正在计算眼睛纵横比 EAR...',
+      '正在评估面部左右对称性...',
+      '正在提取脸颊区域色彩...'
+    ];
+    const factContainer = document.getElementById('analyzeFacts');
+    factContainer.innerHTML = '';
+    facts.forEach((f, i) => {
+      setTimeout(() => {
+        const el = document.createElement('div');
+        el.className = 'fact-item';
+        el.style.animationDelay = '0s';
+        el.textContent = f;
+        factContainer.appendChild(el);
+      }, 600 + i * 600);
+    });
+
     setTimeout(() => {
-      const el = document.createElement('div');
-      el.className = 'fact-item';
-      el.style.animationDelay = '0s';
-      el.textContent = f;
-      factContainer.appendChild(el);
-    }, 600 + i * 600);
-  });
-
-  setTimeout(() => {
-    computeAndShowResults(lastLandmarks, tempCanvas);
-  }, 3500);
+      computeAndShowResults(lastLandmarks, tempCanvas);
+    }, 3500);
+  } catch (e) {
+    console.error('拍照失败:', e);
+    alert('拍照失败: ' + e.message + '\n请刷新页面重试');
+  }
 }
 
 // ===================== 核心计算引擎 =====================
