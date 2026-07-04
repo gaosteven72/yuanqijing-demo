@@ -183,6 +183,30 @@ html, body { width: 100%; height: 100%; font-family: -apple-system, BlinkMacSyst
 .persona-desc { font-size: 14px; color: var(--text-light); line-height: 1.6; }
 .persona-tag { display: inline-block; margin-top: 10px; padding: 4px 12px; border-radius: 12px; font-size: 12px; background: rgba(255,183,165,0.15); color: var(--peach-dark); }
 
+
+/* ===== 历史对比页 ===== */
+#comparePage { background: var(--cream); justify-content: flex-start; padding: 40px 20px 20px; overflow-y: auto; }
+.compare-header { text-align: center; margin-bottom: 20px; }
+.compare-header h2 { font-size: 22px; color: var(--text-dark); }
+.compare-header p { font-size: 13px; color: var(--text-light); margin-top: 6px; }
+.compare-container { width: 100%; max-width: 360px; display: flex; flex-direction: column; gap: 16px; }
+.compare-card { background: var(--white); border-radius: 20px; padding: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.04); border: 1.5px solid var(--rose); }
+.compare-card.no-match { opacity: 0.6; border-style: dashed; }
+.compare-card-title { font-size: 15px; font-weight: 700; color: var(--text-dark); margin-bottom: 14px; }
+.compare-card-title span { font-size: 12px; color: var(--text-light); font-weight: 400; margin-left: 6px; }
+.compare-photos { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+.compare-photo-box { flex: 1; text-align: center; }
+.compare-photo-box img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 16px; border: 2px solid var(--rose); background: var(--cream); }
+.compare-photo-label { font-size: 11px; color: var(--text-light); margin-bottom: 6px; }
+.compare-vs { font-size: 14px; font-weight: 700; color: var(--peach-dark); }
+.compare-scores { display: flex; justify-content: space-between; align-items: center; background: var(--cream); border-radius: 14px; padding: 12px 16px; }
+.compare-score-item { text-align: center; }
+.compare-score-label { font-size: 11px; color: var(--text-light); }
+.compare-score-val { font-size: 24px; font-weight: 700; color: var(--peach-dark); margin-top: 2px; }
+.compare-score-delta { font-size: 18px; font-weight: 700; padding: 4px 12px; border-radius: 12px; }
+.compare-score-delta.up { color: #E74C3C; background: #FFF0F0; }
+.compare-score-delta.down { color: #27AE60; background: #F0FFF4; }
+.compare-no-photo { font-size: 14px; color: var(--text-light); text-align: center; padding: 40px 0; }
 </style>
 </head>
 <body>
@@ -259,6 +283,7 @@ html, body { width: 100%; height: 100%; font-family: -apple-system, BlinkMacSyst
   </div>
   <div class="result-actions">
     <button class="result-btn btn-primary" onclick="goTo('cardPage')">&#128247; 生成日签</button>
+    <button class="result-btn btn-ghost" onclick="goTo('comparePage')">&#128260; 历史对比</button>
     <button class="result-btn btn-ghost" onclick="goTo('timelinePage')">&#128200; 时光机</button>
     <button class="result-btn btn-ghost" onclick="retake()">&#8634; 再拍一张</button>
   </div>
@@ -297,6 +322,7 @@ function goTo(pageId) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById(pageId).classList.add('active');
   if (pageId === 'timelinePage') { setTimeout(() => { drawRealTrend(); renderTimeline(); }, 300); }
+  if (pageId === 'comparePage') { setTimeout(() => { renderComparePage(); }, 100); }
   if (pageId === 'cardPage') { setTimeout(() => { updateCardPage(); }, 100); }
   if (pageId === 'settingsPage') { const pd = document.getElementById('currentPersonaDesc'); if (pd) pd.textContent = currentPersona + ' · ' + (currentPersona === '小暖' ? '温柔细腻' : currentPersona === '阿盐' ? '直率接地气' : currentPersona === '鹿鹿' ? '元气俏皮' : '知性冷静'); }
 }
@@ -764,7 +790,26 @@ function computeAndShowResults(lm, sourceCanvas) {
 
     // 保存到当前会话
     currentSession = {vitality, scores, mouthCurveRaw, ear, symY, avgR, avgG, avgB, date: new Date().toISOString().split('T')[0]};
-    saveToHistory(currentSession);
+    // 生成 200x200 缩略图（居中裁剪）
+    let thumbUrl = null;
+    if (snapDataUrl) {
+      try {
+        const tCanvas = document.createElement('canvas');
+        tCanvas.width = 200; tCanvas.height = 200;
+        const tImg = new Image();
+        tImg.onload = function() {
+          const ts = Math.min(tImg.width, tImg.height);
+          const tx = (tImg.width - ts) / 2;
+          const ty = (tImg.height - ts) / 2;
+          tCanvas.getContext('2d').drawImage(tImg, tx, ty, ts, ts, 0, 0, 200, 200);
+          const thumb = tCanvas.toDataURL('image/jpeg', 0.6);
+          saveToHistory(currentSession, thumb);
+        };
+        tImg.src = snapDataUrl;
+      } catch(e) { saveToHistory(currentSession); }
+    } else {
+      saveToHistory(currentSession);
+    }
 
     goTo('resultPage');
   } catch (e) {
@@ -864,7 +909,7 @@ function getShortDate() {
   const d = new Date();
   return `${d.getMonth()+1}.${d.getDate()}`;
 }
-function saveToHistory(session) {
+function saveToHistory(session, thumbUrl) {
   let history = JSON.parse(localStorage.getItem('yuanqijing_history') || '[]');
   history.push({
     date: session.date,
@@ -872,7 +917,8 @@ function saveToHistory(session) {
     scores: session.scores,
     mouthCurve: session.mouthCurveRaw,
     ear: session.ear,
-    sym: session.symY
+    sym: session.symY,
+    thumb: thumbUrl || null
   });
   if (history.length > 30) history = history.slice(-30);
   localStorage.setItem('yuanqijing_history', JSON.stringify(history));
@@ -944,7 +990,11 @@ function generateCardCanvas() {
     img.onload = function() {
       ctx.save();
       ctx.beginPath(); ctx.arc(540, 520, 200, 0, Math.PI * 2); ctx.clip();
-      ctx.drawImage(img, 340, 320, 400, 400);
+      // Maintain aspect ratio, center crop to square
+      const srcSize = Math.min(img.width, img.height);
+      const sx = (img.width - srcSize) / 2;
+      const sy = (img.height - srcSize) / 2;
+      ctx.drawImage(img, sx, sy, srcSize, srcSize, 340, 320, 400, 400);
       ctx.restore();
       ctx.strokeStyle = '#F8C3CD'; ctx.lineWidth = 12;
       ctx.beginPath(); ctx.arc(540, 520, 206, 0, Math.PI * 2); ctx.stroke();
@@ -1035,6 +1085,68 @@ function drawRealTrend() {
   }
   days.forEach((d, i) => { if (d) { const x = pad + i * ((w - 2 * pad) / (data.length - 1)); ctx.fillStyle = '#8B7B7B'; ctx.font = '9px sans-serif'; ctx.textAlign = 'center'; ctx.fillText(d, x, h - 6); } });
   ctx.fillStyle = '#4A3B3B'; ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'left'; ctx.fillText('7 日元气趋势', pad, 16);
+}
+
+
+// ===================== 历史对比 =====================
+function findHistoricalMatch(type) {
+  const history = getHistory();
+  const today = new Date();
+  const todayStr = today.toISOString().split('T')[0];
+  const todayMD = todayStr.slice(5); // MM-DD
+
+  for (let i = history.length - 1; i >= 0; i--) {
+    const h = history[i];
+    if (h.date === todayStr) continue;
+    const hDate = new Date(h.date + 'T00:00:00');
+    const hMD = h.date.slice(5);
+
+    if (type === 'week') {
+      const diffDays = (today - hDate) / (1000 * 60 * 60 * 24);
+      if (diffDays >= 6 && diffDays <= 8) return h;
+    } else if (type === 'month') {
+      const diffDays = (today - hDate) / (1000 * 60 * 60 * 24);
+      if (diffDays >= 28 && diffDays <= 32) return h;
+    } else if (type === 'year') {
+      if (hMD === todayMD) return h;
+    }
+  }
+  return null;
+}
+
+function renderComparePage() {
+  const container = document.getElementById('compareContainer');
+  if (!container) return;
+  const today = currentSession;
+  const todayVitality = today.vitality || 0;
+  const todayThumb = snapDataUrl || '';
+
+  const types = [
+    { key: 'week', label: '上周同天', icon: '&#128197;' },
+    { key: 'month', label: '上月同天', icon: '&#128197;' },
+    { key: 'year', label: '上年同天', icon: '&#127883;' }
+  ];
+
+  let html = '';
+  types.forEach(t => {
+    const match = findHistoricalMatch(t.key);
+    if (!match) {
+      html += '<div class="compare-card no-match"><div class="compare-card-title">' + t.icon + ' ' + t.label + '</div><div class="compare-no-photo">暂无记录</div></div>';
+      return;
+    }
+    const delta = todayVitality - match.vitality;
+    const deltaClass = delta >= 0 ? 'up' : 'down';
+    const deltaSign = delta >= 0 ? '+' : '';
+    html += '<div class="compare-card"><div class="compare-card-title">' + t.icon + ' ' + t.label + ' <span>' + match.date + '</span></div><div class="compare-photos">';
+    html += '<div class="compare-photo-box"><div class="compare-photo-label">今天</div><img src="' + (todayThumb || '') + '" alt=""/></div>';
+    html += '<div class="compare-vs">VS</div>';
+    html += '<div class="compare-photo-box"><div class="compare-photo-label">' + match.date + '</div><img src="' + (match.thumb || '') + '" alt=""/></div>';
+    html += '</div><div class="compare-scores"><div class="compare-score-item"><div class="compare-score-label">今天</div><div class="compare-score-val">' + todayVitality + '</div></div>';
+    html += '<div class="compare-score-delta ' + deltaClass + '">' + deltaSign + delta + '</div>';
+    html += '<div class="compare-score-item"><div class="compare-score-label">' + t.label + '</div><div class="compare-score-val">' + match.vitality + '</div></div></div></div>';
+  });
+
+  container.innerHTML = html;
 }
 
 function renderTimeline() {
@@ -1238,5 +1350,17 @@ function updateCardPage() {
   <button class="guide-btn" style="margin-top:24px" onclick="goTo('settingsPage')">确认选择</button>
 </div>
 
+
+<!-- ===== 历史对比页 ===== -->
+<div id="comparePage" class="page">
+  <div class="back-btn" onclick="goTo('resultPage')">&#8592;</div>
+  <div class="compare-header">
+    <h2>历史对比</h2>
+    <p>今天 vs 过去的你</p>
+  </div>
+  <div class="compare-container" id="compareContainer">
+    <!-- JS fills this -->
+  </div>
+</div>
 </body>
 </html>
