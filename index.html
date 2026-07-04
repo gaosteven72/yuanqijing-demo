@@ -446,6 +446,16 @@ function captureAndAnalyze() {
   }
 }
 
+function estimateAgeFactor(lm) {
+  const faceW = dist(lm[234], lm[454]);
+  const faceH = dist(lm[10], lm[152]);
+  const eyeDist = dist(lm[33], lm[263]);
+  const eyeRatio = eyeDist / faceW;
+  const aspectRatio = faceH / faceW;
+  if (eyeRatio > 0.36 && aspectRatio < 1.15) return 1.08;
+  return 1.0;
+}
+
 // ===================== 核心计算引擎 =====================
 function computeAndShowResults(lm, sourceCanvas) {
   try {
