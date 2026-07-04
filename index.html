@@ -310,9 +310,6 @@ function onFaceResults(results) {
     const landmarks = results.multiFaceLandmarks[0];
     lastLandmarks = landmarks;
 
-    // 人脸验证：过滤小熊/玩偶等非人类目标
-    const isHuman = isRealHumanFace(landmarks);
-
     // 绘制网格
     drawConnectors(canvasCtx, landmarks, FACEMESH_TESSELATION, {color: 'rgba(255,183,165,0.25)', lineWidth: 1});
     drawConnectors(canvasCtx, landmarks, FACEMESH_FACE_OVAL, {color: 'rgba(255,183,165,0.5)', lineWidth: 1.5});
@@ -329,19 +326,6 @@ function onFaceResults(results) {
       canvasCtx.arc(lm.x * w, lm.y * h, 3, 0, Math.PI * 2);
       canvasCtx.fillStyle = '#FFB7A5';
       canvasCtx.fill();
-    }
-
-    if (!isHuman) {
-      statusEl.textContent = '● 检测到非人类目标，请对准真实人脸';
-      statusEl.className = 'cam-status error';
-      shutterBtn.disabled = true;
-      shutterBtn.style.opacity = '0.4';
-      document.getElementById('faceGuide').style.opacity = '1';
-      document.getElementById('liveMetrics').style.opacity = '0';
-      faceDetected = false;
-      if (faceLostTimer) { clearTimeout(faceLostTimer); faceLostTimer = null; }
-      canvasCtx.restore();
-      return;
     }
 
     statusEl.textContent = '● 已检测到人脸';
