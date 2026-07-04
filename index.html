@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+<title>元气镜 · 真机体验版</title>
+<!-- MediaPipe CDN -->
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --cream: #FFF8F0; --peach: #FFB7A5; --peach-dark: #E89B88; --rose: #F8C3CD;
+  --gold: #F4D03F; --text-dark: #4A3B3B; --text-light: #8B7B7B;
+  --lavender: #E6E6FA; --white: #FFFFFF;
+}
+html, body { width: 100%; height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif; background: #1a1a1a; color: var(--text-dark); overflow: hidden; }
+.page { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: none; flex-direction: column; align-items: center; }
+.page.active { display: flex; }
+
+/* ===== 摄像头页 ===== */
+#cameraPage { background: #000; justify-content: flex-start; }
+.cam-header { width: 100%; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; position: absolute; top: 0; z-index: 10; }
+.cam-title { color: rgba(255,255,255,0.8); font-size: 15px; font-weight: 600; }
+.cam-close { color: white; font-size: 20px; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.35); border-radius: 50%; cursor: pointer; }
+.video-wrap { width: 100%; height: 70%; position: relative; display: flex; align-items: center; justify-content: center; margin-top: 60px; }
+#inputVideo { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+#overlayCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; transform: scaleX(-1); pointer-events: none; }
+.face-guide-ring { position: absolute; width: 260px; height: 320px; border: 2px dashed rgba(255,183,165,0.5); border-radius: 130px 130px 100px 100px; pointer-events: none; }
+.face-guide-text { position: absolute; bottom: -36px; color: rgba(255,255,255,0.5); font-size: 13px; }
+.cam-status { position: absolute; top: 16px; right: 16px; padding: 6px 12px; border-radius: 14px; font-size: 12px; background: rgba(0,0,0,0.4); color: #4CAF50; z-index: 5; }
+.cam-status.waiting { color: #FFC107; }
+.cam-status.error { color: #F44336; }
+.cam-bottom { width: 100%; padding: 24px; display: flex; flex-direction: column; align-items: center; position: absolute; bottom: 0; background: linear-gradient(to top, rgba(0,0,0,0.6), transparent); }
+.cam-shutter { width: 72px; height: 72px; border-radius: 50%; border: 4px solid white; background: transparent; cursor: pointer; position: relative; transition: transform 0.15s; }
+.cam-shutter::after { content: ''; position: absolute; top: 6px; left: 6px; width: 52px; height: 52px; border-radius: 50%; background: white; }
+.cam-shutter:active { transform: scale(0.9); }
+.cam-shutter:disabled { opacity: 0.4; cursor: not-allowed; }
+.cam-tip { margin-top: 14px; color: rgba(255,255,255,0.5); font-size: 12px; text-align: center; }
+.cam-metrics { display: flex; gap: 16px; margin-top: 10px; }
+.cam-metric { text-align: center; color: rgba(255,255,255,0.6); font-size: 11px; }
+.cam-metric .val { color: var(--peach); font-size: 14px; font-weight: 700; }
+
+/* ===== 分析页 ===== */
+#analyzePage { background: var(--cream); justify-content: center; align-items: center; }
+.analyzing-ring { width: 200px; height: 200px; position: relative; }
+.particle { position: absolute; width: 6px; height: 6px; border-radius: 50%; background: var(--peach); opacity: 0; animation: converge 2.2s ease-in-out infinite; }
+@keyframes converge { 0%{transform:translate(var(--sx),var(--sy)) scale(0.3);opacity:0} 40%{opacity:0.8} 100%{transform:translate(0,0) scale(0.5);opacity:0.2} }
+.analyzing-text { margin-top: 40px; font-size: 16px; color: var(--text-light); text-align: center; line-height: 2; }
+.analyzing-dots::after { content: ''; animation: dots 1.5s steps(4,end) infinite; }
+@keyframes dots { 0%{content:''} 25%{content:'.'} 50%{content:'..'} 75%{content:'...'} }
+.analyzing-facts { margin-top: 20px; max-width: 300px; }
+.fact-item { font-size: 13px; color: var(--text-light); text-align: center; line-height: 1.8; opacity: 0; animation: fadeIn 0.6s forwards; }
+@keyframes fadeIn { to { opacity: 1; } }
+
+/* ===== 结果页 ===== */
+#resultPage { background: var(--cream); justify-content: flex-start; padding: 32px 20px 20px; overflow-y: auto; }
+.result-header { text-align: center; margin-bottom: 12px; }
+.result-vitality { font-size: 56px; font-weight: 700; color: var(--peach-dark); line-height: 1; }
+.result-v-label { font-size: 14px; color: var(--text-light); margin-top: 4px; }
+.radar-wrap { width: 100%; max-width: 340px; height: 240px; position: relative; margin: 8px auto; }
+#radarCanvas { width: 100%; height: 100%; }
+.dim-mini-grid { width: 100%; max-width: 360px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 8px; }
+.dim-mini { background: var(--white); border-radius: 14px; padding: 10px 4px; text-align: center; border: 1.5px solid var(--rose); cursor: pointer; }
+.dim-mini-name { font-size: 11px; color: var(--text-light); }
+.dim-mini-score { font-size: 16px; font-weight: 700; color: var(--peach-dark); }
+.advice-card { width: 100%; max-width: 360px; margin: 12px auto 0; background: var(--white); border-radius: 20px; padding: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.04); border: 1px solid rgba(248,195,205,0.25); }
+.advice-persona { display: inline-block; font-size: 12px; color: var(--peach-dark); background: rgba(255,183,165,0.12); padding: 3px 10px; border-radius: 10px; margin-bottom: 10px; }
+.advice-text { font-size: 15px; line-height: 1.8; color: var(--text-dark); }
+.advice-tags { margin-top: 14px; display: flex; gap: 8px; flex-wrap: wrap; }
+.advice-tag { font-size: 12px; padding: 5px 12px; border-radius: 14px; background: var(--cream); color: var(--text-light); border: 1px solid var(--rose); }
+.result-actions { display: flex; gap: 10px; margin-top: 20px; justify-content: center; flex-wrap: wrap; }
+.result-btn { padding: 12px 24px; border-radius: 24px; font-size: 14px; font-weight: 600; cursor: pointer; border: none; transition: transform 0.2s; }
+.result-btn:active { transform: scale(0.96); }
+.btn-primary { background: linear-gradient(135deg, var(--peach-dark), var(--peach)); color: white; }
+.btn-ghost { background: var(--white); color: var(--peach-dark); border: 1.5px solid var(--peach); }
+.snap-thumb { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 3px solid var(--white); box-shadow: 0 4px 16px var(--rose); margin: 0 auto 8px; display: block; }
+
+/* ===== 详情面板 ===== */
+.detail-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.35); z-index: 200; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; }
+.detail-overlay.active { opacity: 1; pointer-events: all; }
+.detail-sheet { position: fixed; bottom: 0; left: 0; width: 100%; max-height: 70%; background: var(--white); border-radius: 24px 24px 0 0; z-index: 201; transform: translateY(100%); transition: transform 0.35s cubic-bezier(0.32,0.72,0,1); padding: 0 20px 32px; overflow-y: auto; }
+.detail-sheet.active { transform: translateY(0); }
+.detail-drag-handle { width: 36px; height: 4px; border-radius: 2px; background: #ddd; margin: 12px auto; }
+.detail-title-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.detail-name { font-size: 18px; font-weight: 700; color: var(--text-dark); }
+.detail-score-pill { font-size: 14px; font-weight: 700; color: white; background: var(--peach); padding: 3px 12px; border-radius: 12px; }
+.detail-measure { font-size: 13px; color: var(--text-light); margin-bottom: 12px; }
+.detail-measure strong { color: var(--peach-dark); font-size: 15px; }
+.detail-progress-wrap { width: 100%; height: 10px; background: #eee; border-radius: 5px; overflow: hidden; margin-bottom: 4px; }
+.detail-progress-fill { height: 100%; border-radius: 5px; background: linear-gradient(90deg, var(--peach), var(--peach-dark)); transition: width 0.6s ease; }
+.detail-range { font-size: 11px; color: #aaa; text-align: right; margin-bottom: 14px; }
+.detail-text { font-size: 14px; line-height: 1.8; color: var(--text-dark); padding: 14px 16px; background: var(--cream); border-radius: 14px; margin-bottom: 14px; border-left: 3px solid var(--peach); }
+.detail-compare { display: flex; gap: 12px; }
+.detail-compare-box { flex: 1; background: var(--white); border: 1.5px solid var(--rose); border-radius: 14px; padding: 12px; text-align: center; }
+.detail-compare-box .dc-label { font-size: 11px; color: var(--text-light); }
+.detail-compare-box .dc-score { font-size: 22px; font-weight: 700; color: var(--peach-dark); margin-top: 2px; }
+.detail-hint { text-align: center; font-size: 12px; color: #bbb; margin-top: 12px; }
+
+/* 引导页 */
+#guidePage { background: linear-gradient(135deg, #FFF8F0 0%, #FFF0E8 50%, #F8E0D8 100%); justify-content: center; align-items: center; padding: 40px 24px; text-align: center; }
+.guide-logo { width: 100px; height: 100px; border-radius: 50%; background: linear-gradient(135deg, var(--peach), var(--rose)); display: flex; align-items: center; justify-content: center; font-size: 40px; box-shadow: 0 12px 40px rgba(232,155,136,0.35); margin-bottom: 24px; }
+.guide-title { font-size: 26px; font-weight: 700; letter-spacing: 2px; margin-bottom: 12px; }
+.guide-sub { font-size: 14px; color: var(--text-light); line-height: 1.8; margin-bottom: 32px; }
+.guide-steps { text-align: left; max-width: 300px; margin-bottom: 32px; }
+.guide-step { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 16px; }
+.guide-step-num { width: 28px; height: 28px; border-radius: 50%; background: var(--peach); color: white; font-size: 14px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.guide-step-text { font-size: 14px; color: var(--text-dark); line-height: 1.6; }
+.guide-btn { padding: 16px 52px; border: none; border-radius: 32px; background: linear-gradient(135deg, var(--peach-dark), var(--peach)); color: white; font-size: 17px; font-weight: 600; box-shadow: 0 8px 24px rgba(232,155,136,0.4); cursor: pointer; }
+.guide-note { font-size: 12px; color: var(--text-light); margin-top: 16px; }
+</style>
+</head>
+<body>
+
+<!-- ===== 引导页 ===== -->
+<div id="guidePage" class="page active">
+  <div class="guide-logo">&#128302;</div>
+  <div class="guide-title">元气镜</div>
+  <div class="guide-sub">真机体验版<br>用人脸关键点几何测量，<br>看见此刻真实的自己</div>
+  <div class="guide-steps">
+    <div class="guide-step">
+      <div class="guide-step-num">1</div>
+      <div class="guide-step-text">允许摄像头权限，前置摄像头对准面部</div>
+    </div>
+    <div class="guide-step">
+      <div class="guide-step-num">2</div>
+      <div class="guide-step-text">看到绿色网格覆盖面部后，点击快门</div>
+    </div>
+    <div class="guide-step">
+      <div class="guide-step-num">3</div>
+      <div class="guide-step-text">1 秒后读取 468 个关键点，生成测量报告</div>
+    </div>
+  </div>
+  <button class="guide-btn" onclick="startCamera()">开始体验</button>
+  <div class="guide-note">&#128274; 照片和分析仅在本机处理，不会上传</div>
+</div>
+
+<!-- ===== 摄像头页 ===== -->
+<div id="cameraPage" class="page">
+  <div class="cam-header">
+    <div class="cam-title">元气镜 · 真机版</div>
+    <div class="cam-close" onclick="location.reload()">&#10005;</div>
+  </div>
+  <div class="cam-status waiting" id="camStatus">&#9679; 正在加载模型...</div>
+  <div class="video-wrap">
+    <video id="inputVideo" playsinline></video>
+    <canvas id="overlayCanvas"></canvas>
+    <div class="face-guide-ring" id="faceGuide"><div class="face-guide-text">对准人脸</div></div>
+  </div>
+  <div class="cam-bottom">
+    <div class="cam-metrics" id="liveMetrics" style="opacity:0;transition:opacity 0.5s">
+      <div class="cam-metric"><div class="val" id="mMouth">--</div><div>嘴角</div></div>
+      <div class="cam-metric"><div class="val" id="mEye">--</div><div>睁眼</div></div>
+      <div class="cam-metric"><div class="val" id="mSym">--</div><div>对称</div></div>
+    </div>
+    <button class="cam-shutter" id="shutterBtn" onclick="captureAndAnalyze()" disabled></button>
+    <div class="cam-tip">自然光下效果最佳 · 点击快门拍摄分析</div>
+  </div>
+</div>
+
+<!-- ===== 分析页 ===== -->
+<div id="analyzePage" class="page">
+  <div class="analyzing-ring" id="particleRing"></div>
+  <div class="analyzing-text">
+    正在读取 468 个关键点<span class="analyzing-dots"></span>
+  </div>
+  <div class="analyzing-facts" id="analyzeFacts"></div>
+</div>
+
+<!-- ===== 结果页 ===== -->
+<div id="resultPage" class="page">
+  <div class="result-header">
+    <img class="snap-thumb" id="snapThumb" src="" alt="">
+    <div class="result-vitality" id="vitalityScore">0</div>
+    <div class="result-v-label">今日元气值</div>
+  </div>
+  <div class="radar-wrap"><canvas id="radarCanvas"></canvas></div>
+  <div class="dim-mini-grid" id="dimMiniGrid"></div>
+  <div class="advice-card">
+    <div class="advice-persona">小暖对你说</div>
+    <div class="advice-text" id="adviceText">分析中...</div>
+    <div class="advice-tags" id="adviceTags"></div>
+  </div>
+  <div class="result-actions">
+    <button class="result-btn btn-ghost" onclick="retake()">再拍一张</button>
+  </div>
+</div>
+
+<!-- ===== 详情面板 ===== -->
+<div class="detail-overlay" id="detailOverlay" onclick="closeDetail()"></div>
+<div class="detail-sheet" id="detailSheet">
+  <div class="detail-drag-handle"></div>
+  <div class="detail-title-row">
+    <div class="detail-name" id="detailName">--</div>
+    <div class="detail-score-pill" id="detailScore">--分</div>
+  </div>
+  <div class="detail-measure" id="detailMeasure">测量值：<strong>--</strong></div>
+  <div class="detail-progress-wrap"><div class="detail-progress-fill" id="detailProgress" style="width:0%"></div></div>
+  <div class="detail-range" id="detailRange">参考范围：--</div>
+  <div class="detail-text" id="detailText">--</div>
+  <div class="detail-hint">&#128161; 这个分数来自面部 468 个关键点的几何测量</div>
+</div>
+
+<script>
+// ===================== 全局状态 =====================
+let faceMesh = null;
+let camera = null;
+let videoElement = null;
+let canvasElement = null;
+let canvasCtx = null;
+let lastLandmarks = null;
+let snapDataUrl = null;
+
+// ===================== 工具函数 =====================
+function dist(a, b) { return Math.sqrt((a.x-b.x)**2 + (a.y-b.y)**2); }
+function goTo(pageId) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById(pageId).classList.add('active');
+}
+
+function createParticles() {
+  const ring = document.getElementById('particleRing');
+  ring.innerHTML = '';
+  for (let i = 0; i < 20; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    const angle = (i / 20) * Math.PI * 2;
+    const r = 90;
+    p.style.setProperty('--sx', Math.cos(angle) * r + 'px');
+    p.style.setProperty('--sy', Math.sin(angle) * r + 'px');
+    p.style.animationDelay = (i * 0.1) + 's';
+    p.style.left = '50%'; p.style.top = '50%';
+    p.style.marginLeft = '-3px'; p.style.marginTop = '-3px';
+    ring.appendChild(p);
+  }
+}
+
+// ===================== 摄像头启动 =====================
+async function startCamera() {
+  goTo('cameraPage');
+  videoElement = document.getElementById('inputVideo');
+  canvasElement = document.getElementById('overlayCanvas');
+  canvasCtx = canvasElement.getContext('2d');
+
+  // 设置 canvas 尺寸匹配视频
+  const resizeCanvas = () => {
+    canvasElement.width = videoElement.videoWidth || videoElement.clientWidth;
+    canvasElement.height = videoElement.videoHeight || videoElement.clientHeight;
+  };
+
+  faceMesh = new FaceMesh({locateFile: (file) => {
+    return `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`;
+  }});
+
+  faceMesh.setOptions({
+    maxNumFaces: 1,
+    refineLandmarks: true,
+    minDetectionConfidence: 0.5,
+    minTrackingConfidence: 0.5
+  });
+
+  faceMesh.onResults(onFaceResults);
+
+  const statusEl = document.getElementById('camStatus');
+
+  camera = new Camera(videoElement, {
+    onFrame: async () => {
+      await faceMesh.send({image: videoElement});
+    },
+    width: 640,
+    height: 480,
+    facingMode: 'user'
+  });
+
+  try {
+    await camera.start();
+    statusEl.textContent = '\u25CF 正在寻找人脸...';
+    statusEl.className = 'cam-status waiting';
+    setTimeout(resizeCanvas, 1000);
+  } catch (e) {
+    statusEl.textContent = '\u25CF 摄像头启动失败：' + e.message;
+    statusEl.className = 'cam-status error';
+    alert('无法启动摄像头，请确保：\n1. 使用 HTTPS 或 localhost\n2. 已授予摄像头权限\n3. 不是微信内置浏览器（请用 Safari/Chrome 打开）');
+  }
+}
+
+// ===================== MediaPipe 回调 =====================
+function onFaceResults(results) {
+  const w = canvasElement.width;
+  const h = canvasElement.height;
+  canvasCtx.save();
+  canvasCtx.clearRect(0, 0, w, h);
+
+  const statusEl = document.getElementById('camStatus');
+  const shutterBtn = document.getElementById('shutterBtn');
+
+  if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
+    const landmarks = results.multiFaceLandmarks[0];
+    lastLandmarks = landmarks;
+
+    // 绘制网格
+    drawConnectors(canvasCtx, landmarks, FACEMESH_TESSELATION, {color: 'rgba(255,183,165,0.25)', lineWidth: 1});
+    drawConnectors(canvasCtx, landmarks, FACEMESH_FACE_OVAL, {color: 'rgba(255,183,165,0.5)', lineWidth: 1.5});
+    drawConnectors(canvasCtx, landmarks, FACEMESH_LIPS, {color: '#E89B88', lineWidth: 2});
+    drawConnectors(canvasCtx, landmarks, FACEMESH_LEFT_EYE, {color: '#E89B88', lineWidth: 2});
+    drawConnectors(canvasCtx, landmarks, FACEMESH_RIGHT_EYE, {color: '#E89B88', lineWidth: 2});
+    drawConnectors(canvasCtx, landmarks, FACEMESH_LEFT_EYEBROW, {color: '#E89B88', lineWidth: 2});
+    drawConnectors(canvasCtx, landmarks, FACEMESH_RIGHT_EYEBROW, {color: '#E89B88', lineWidth: 2});
+
+    // 关键点高亮
+    for (const p of [61, 291, 0, 159, 386]) {
+      const lm = landmarks[p];
+      canvasCtx.beginPath();
+      canvasCtx.arc(lm.x * w, lm.y * h, 3, 0, Math.PI * 2);
+      canvasCtx.fillStyle = '#FFB7A5';
+      canvasCtx.fill();
+    }
+
+    statusEl.textContent = '\u25CF 已检测到人脸';
+    statusEl.className = 'cam-status';
+    shutterBtn.disabled = false;
+    document.getElementById('faceGuide').style.opacity = '0';
+    document.getElementById('liveMetrics').style.opacity = '1';
+
+    // 实时更新底部指标
+    updateLiveMetrics(landmarks);
+  } else {
+    statusEl.textContent = '\u25CF 正在寻找人脸...';
+    statusEl.className = 'cam-status waiting';
+    shutterBtn.disabled = true;
+    document.getElementById('faceGuide').style.opacity = '1';
+    document.getElementById('liveMetrics').style.opacity = '0';
+  }
+  canvasCtx.restore();
+}
+
+function updateLiveMetrics(lm) {
+  // 嘴角弧度: (0.y - avg(61.y,291.y)) / faceWidth
+  const faceW = dist(lm[234], lm[454]);
+  const mouthCurve = (lm[0].y - (lm[61].y + lm[291].y) / 2) / faceW;
+  document.getElementById('mMouth').textContent = mouthCurve > 0.03 ? '\u263A' : (mouthCurve < -0.01 ? '\u2639' : '\u2014');
+
+  // 睁眼度: EAR 简化
+  const earL = (dist(lm[159], lm[145]) + dist(lm[158], lm[153])) / (2 * dist(lm[33], lm[133]));
+  const earR = (dist(lm[386], lm[374]) + dist(lm[385], lm[380])) / (2 * dist(lm[362], lm[263]));
+  const ear = ((earL + earR) / 2 * 100).toFixed(0);
+  document.getElementById('mEye').textContent = ear + '%';
+
+  // 对称偏差
+  const sym = (Math.abs(lm[61].y - lm[291].y) / faceW * 100).toFixed(1);
+  document.getElementById('mSym').textContent = sym + '%';
+}
+
+// ===================== 拍摄与分析 =====================
+function captureAndAnalyze() {
+  if (!lastLandmarks) return;
+
+  // 从 video 帧创建缩略图
+  const tempCanvas = document.createElement('canvas');
+  tempCanvas.width = videoElement.videoWidth;
+  tempCanvas.height = videoElement.videoHeight;
+  const tctx = tempCanvas.getContext('2d');
+  tctx.translate(tempCanvas.width, 0);
+  tctx.scale(-1, 1); // 镜像翻转，让照片看起来正常
+  tctx.drawImage(videoElement, 0, 0, tempCanvas.width, tempCanvas.height);
+  snapDataUrl = tempCanvas.toDataURL('image/jpeg', 0.85);
+
+  // 停止摄像头
+  if (camera) camera.stop();
+
+  // 进入分析页
+  goTo('analyzePage');
+  createParticles();
+
+  // 分析事实轮播
+  const facts = [
+    '正在测量嘴角弧度（关键点 61 & 291）...',
+    '正在计算眼睛纵横比 EAR...',
+    '正在评估面部左右对称性...',
+    '正在提取脸颊区域色彩...'
+  ];
+  const factContainer = document.getElementById('analyzeFacts');
+  factContainer.innerHTML = '';
+  facts.forEach((f, i) => {
+    setTimeout(() => {
+      const el = document.createElement('div');
+      el.className = 'fact-item';
+      el.style.animationDelay = '0s';
+      el.textContent = f;
+      factContainer.appendChild(el);
+    }, 600 + i * 600);
+  });
+
+  setTimeout(() => {
+    computeAndShowResults(lastLandmarks, tempCanvas);
+  }, 3500);
+}
+
+// ===================== 核心计算引擎 =====================
+function computeAndShowResults(lm, sourceCanvas) {
+  const faceW = dist(lm[234], lm[454]);
+  const faceH = dist(lm[10], lm[152]);
+
+  // ---- 1. 嘴角弧度 (MC) ----
+  const mouthCenterY = (lm[61].y + lm[291].y) / 2;
+  const mouthCurveRaw = (lm[0].y - mouthCenterY) / faceW; // 正值=上扬
+  const mcScore = Math.min(100, Math.max(0, 50 + mouthCurveRaw * 800));
+
+  // ---- 2. 眉眼精神 (BEE) ----
+  const browToEyeL = dist(lm[107], lm[159]) / faceH;
+  const browToEyeR = dist(lm[336], lm[386]) / faceH;
+  const browToEye = ((browToEyeL + browToEyeR) / 2);
+  const earL = (dist(lm[159], lm[145]) + dist(lm[158], lm[153])) / (2 * dist(lm[33], lm[133]));
+  const earR = (dist(lm[386], lm[374]) + dist(lm[385], lm[380])) / (2 * dist(lm[362], lm[263]));
+  const ear = (earL + earR) / 2;
+  const beeScore = Math.min(100, Math.max(0, (browToEye / 0.065) * 50 + (ear / 0.25) * 50));
+
+  // ---- 3. 表情自然 (EX) ----
+  const symY = Math.abs(lm[61].y - lm[291].y) / faceW;
+  const exScore = Math.min(100, Math.max(0, 100 - symY * 2000));
+
+  // ---- 4. 从像素提取气色 & 皮肤 (sourceCanvas) ----
+  const sctx = sourceCanvas.getContext('2d');
+  // 左脸颊区域 (基于关键点 118 附近)
+  const cheekX = Math.floor(lm[118].x * sourceCanvas.width);
+  const cheekY = Math.floor(lm[118].y * sourceCanvas.height);
+  const box = 20;
+  let rSum = 0, gSum = 0, bSum = 0, pxCount = 0;
+  let grayVar = 0, grayVals = [];
+
+  try {
+    const imgData = sctx.getImageData(Math.max(0, cheekX - box), Math.max(0, cheekY - box), box * 2, box * 2);
+    for (let i = 0; i < imgData.data.length; i += 4) {
+      const r = imgData.data[i], g = imgData.data[i+1], b = imgData.data[i+2];
+      rSum += r; gSum += g; bSum += b;
+      const gray = 0.299*r + 0.587*g + 0.114*b;
+      grayVals.push(gray);
+      pxCount++;
+    }
+  } catch(e) { pxCount = 0; }
+
+  let cpScore = 72, skScore = 68;
+  if (pxCount > 0) {
+    const avgR = rSum / pxCount, avgG = gSum / pxCount, avgB = bSum / pxCount;
+    // 简化的 Lab L 近似: 基于亮度
+    const L = (Math.max(avgR, avgG, avgB) + Math.min(avgR, avgG, avgB)) / 2;
+    // 简化的 a 轴近似: 偏红度
+    const a = (avgR - avgG) * 0.5 + 128;
+    cpScore = Math.min(100, Math.max(0, 60 + (L - 140) * 0.3 + (a - 135) * 1.5));
+
+    // 拉普拉斯方差近似
+    let mean = 0;
+    for (const g of grayVals) mean += g;
+    mean /= grayVals.length;
+    let varSum = 0;
+    for (const g of grayVals) varSum += (g - mean) ** 2;
+    const variance = varSum / grayVals.length;
+    skScore = Math.min(100, Math.max(0, 100 - (variance - 50) * 0.3));
+  }
+
+  // ---- 5. 眼神光 (ES) ----
+  // 用眼睛区域平均亮度近似
+  const eyeLX = Math.floor(lm[159].x * sourceCanvas.width);
+  const eyeLY = Math.floor(lm[159].y * sourceCanvas.height);
+  let eyeBright = 0, eyeCount = 0;
+  try {
+    const eyeData = sctx.getImageData(Math.max(0, eyeLX - 15), Math.max(0, eyeLY - 10), 30, 20);
+    for (let i = 0; i < eyeData.data.length; i += 4) {
+      eyeBright += (eyeData.data[i] + eyeData.data[i+1] + eyeData.data[i+2]) / 3;
+      eyeCount++;
+    }
+  } catch(e) {}
+  let esScore = 75;
+  if (eyeCount > 0) {
+    eyeBright /= eyeCount;
+    esScore = Math.min(100, Math.max(0, (eyeBright / 2.55) * 0.8));
+  }
+
+  // ---- 6. 开心指数 (HI) ----
+  // 基于嘴角弧度 + 眼睛眯起程度（Duchenne 简化）
+  const eyeSquint = Math.max(0, 1 - ear / 0.35); // EAR 越小 = 眯得越紧
+  const hiScore = Math.min(100, Math.max(0, mcScore * 0.5 + eyeSquint * 50 + 20));
+
+  // ---- 元气值加权 ----
+  const vitality = Math.round(mcScore * 0.20 + beeScore * 0.15 + esScore * 0.15 + cpScore * 0.15 + skScore * 0.10 + hiScore * 0.25);
+  const scores = [vitality, Math.round(mcScore), Math.round(beeScore), Math.round(esScore), Math.round(cpScore), Math.round(skScore), Math.round(hiScore), Math.round(exScore)];
+
+  // ===================== 渲染结果页 =====================
+  document.getElementById('snapThumb').src = snapDataUrl;
+  document.getElementById('vitalityScore').textContent = vitality;
+
+  // 雷达图
+  drawRadar(scores);
+
+  // 迷你卡片
+  const dimNames = ['元气值', '嘴角弧度', '眉眼精神', '眼神光', '气色指数', '皮肤状态', '开心指数', '表情自然'];
+  const dimIcons = ['\u2B50', '\uD83D\uDE0A', '\uD83D\uDC40', '\u2728', '\uD83C\uDF08', '\uD83E\uDDF5', '\uD83D\uDE0A', '\uD83C\uDFA8'];
+  const grid = document.getElementById('dimMiniGrid');
+  grid.innerHTML = '';
+  scores.forEach((s, i) => {
+    const div = document.createElement('div');
+    div.className = 'dim-mini';
+    div.onclick = () => openDetail(i);
+    div.innerHTML = `<div style="font-size:18px;margin-bottom:2px">${dimIcons[i]}</div><div class="dim-mini-name">${dimNames[i]}</div><div class="dim-mini-score">${s}</div>`;
+    grid.appendChild(div);
+  });
+
+  // 建议文案
+  const adviceTexts = {
+    high: `今天瞳孔区域的亮度指数 ${Math.round(esScore)}，${esScore > 80 ? '眼睛里有藏不住的光' : '光线条件不错'}。嘴角上扬归一化比例 ${mouthCurveRaw.toFixed(3)}，${mouthCurveRaw > 0.03 ? '进入「微笑」区间' : '是淡淡的温柔'}。面部对称偏差仅 ${(symY * 100).toFixed(1)}%，表情非常自然。`,
+    mid: `今天眼睛纵横比 EAR ${(ear * 100).toFixed(1)}，处于「${ear > 0.22 ? '精神' : '放松'}」状态。脸颊色彩亮度 ${Math.round((avgR + avgG + avgB) / 3)}（像素均值），${cpScore > 75 ? '气色看起来有红润感' : '亮度适中，注意休息'}。`,
+    low: `今天嘴角弧度 ${mouthCurveRaw.toFixed(3)}，${mouthCurveRaw < 0 ? '有点微微下垂' : '是平静的状态'}。没关系，数据只代表此刻，不代表全部。`
+  };
+  let advice = adviceTexts.high;
+  if (vitality < 70) advice = adviceTexts.low;
+  else if (vitality < 85) advice = adviceTexts.mid;
+  document.getElementById('adviceText').textContent = advice;
+
+  // 标签
+  const tags = document.getElementById('adviceTags');
+  tags.innerHTML = '';
+  const tagData = [
+    `嘴角 ${mouthCurveRaw > 0 ? '上扬' : '平稳'} ${Math.abs(mouthCurveRaw * 100).toFixed(1)}%`,
+    `EAR ${(ear * 100).toFixed(1)}`,
+    `对称 ${(symY * 100).toFixed(1)}%`
+  ];
+  tagData.forEach(t => {
+    const span = document.createElement('span');
+    span.className = 'advice-tag';
+    span.textContent = t;
+    tags.appendChild(span);
+  });
+
+  // 详情数据
+  window._dimensionData = [
+    { name: '元气值', score: vitality, measure: String(vitality), unit: '综合分（加权）', range: '\u2014', rangeLabel: '由7个维度加权计算', progress: vitality, text: `今天的元气值${vitality}分，由7个面部维度加权计算。${hiScore > 80 ? '开心指数是主要拉动项，你今天笑得很真实。' : '整体处于平稳区间，接纳此刻的自己。'}` },
+    { name: '嘴角弧度', score: Math.round(mcScore), measure: mouthCurveRaw.toFixed(3), unit: '归一化比例（嘴角上扬 / 脸宽）', range: '-0.02 ~ 0.06', rangeLabel: '0.03以上为微笑区间', progress: Math.min(100, Math.max(0, (mouthCurveRaw + 0.02) / 0.08 * 100)), text: `嘴角上扬归一化比例${mouthCurveRaw.toFixed(3)}。${mouthCurveRaw > 0.03 ? '进入微笑区间，这个弧度很动人。' : (mouthCurveRaw < -0.01 ? '今天嘴角有点平静，也许只是没刻意笑。' : '是淡淡的温柔，不张扬。')}` },
+    { name: '眉眼精神', score: Math.round(beeScore), measure: `${browToEye.toFixed(3)} / ${ear.toFixed(3)}`, unit: '眉眼距 / EAR', range: '0.05-0.08 / 0.22-0.28', rangeLabel: '精神区间', progress: Math.min(100, beeScore), text: `眉毛峰到眼睑归一化距离${browToEye.toFixed(3)}，眼睛纵横比(EAR)${ear.toFixed(3)}。${ear > 0.22 ? '眼睛睁得很有神。' : '眼睛处于放松状态，也许有点倦。'}` },
+    { name: '眼神光', score: Math.round(esScore), measure: String(Math.round(eyeBright || 0)), unit: '瞳孔区域平均亮度（0-255）', range: '80 ~ 180', rangeLabel: '理想区间', progress: Math.min(100, (eyeBright || 100) / 2.55), text: `瞳孔区域平均亮度${Math.round(eyeBright || 0)}（0-255范围）。${esScore > 75 ? '这个亮度说明光线很好，也可能是你眼睛本身有光。' : '光线条件一般，试试面向窗户？'}` },
+    { name: '气色指数', score: Math.round(cpScore), measure: pxCount > 0 ? `RGB(${Math.round(avgR)},${Math.round(avgG)},${Math.round(avgB)})` : 'N/A', unit: '脸颊像素均值', range: '亮度适中+偏红', rangeLabel: 'Lab L 140-180 / a 135-142', progress: Math.min(100, cpScore), text: pxCount > 0 ? `脸颊区域像素均值 RGB(${Math.round(avgR)}, ${Math.round(avgG)}, ${Math.round(avgB)})。${cpScore > 75 ? '肤色带有健康的红润色调。' : '亮度适中，保持好作息会更亮。'}` : '像素采样失败，可能是光线不足。' },
+    { name: '皮肤状态', score: Math.round(skScore), measure: pxCount > 0 ? Math.round((grayVals.reduce((a,b)=>a+b,0)/grayVals.length)) : 'N/A', unit: '灰度均值（纹理参考）', range: '80-150为细腻', rangeLabel: '拉普拉斯方差越低越细腻', progress: Math.min(100, skScore), text: pxCount > 0 ? `皮肤纹理灰度均值${Math.round((grayVals.reduce((a,b)=>a+b,0)/grayVals.length))}。${skScore > 70 ? '皮肤状态不错，毛孔和细纹表现良好。' : '今天皮肤纹理稍明显，也许没休息够？'}` : '像素采样失败。' },
+    { name: '开心指数', score: Math.round(hiScore), measure: `EAR=${(ear*100).toFixed(1)}%`, unit: '眼睛纵横比（越低越眯）', range: '<130ms为真实笑容', rangeLabel: 'AU12+AU6同步（简化版）', progress: Math.min(100, hiScore), text: `嘴角上扬 + 眼睛眯起程度综合评估。EAR=${(ear*100).toFixed(1)}%，${ear < 0.28 ? '眼睛有配合嘴角一起动，这是真实笑容的信号。' : '是放松的面部表情。'}` },
+    { name: '表情自然', score: Math.round(exScore), measure: `${(symY*100).toFixed(1)}%`, unit: '左右嘴角高度差 / 脸宽', range: '<2%为自然', rangeLabel: '越低越对称', progress: Math.min(100, exScore), text: `面部左右对称偏差${(symY * 100).toFixed(1)}%。${symY < 0.02 ? '表情非常对称，没有刻意控制或紧张。' : '稍微有点不对称，可能是习惯性表情，完全正常。'}` }
+  ];
+
+  goTo('resultPage');
+}
+
+// ===================== 雷达图 =====================
+function drawRadar(today) {
+  const canvas = document.getElementById('radarCanvas');
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width * dpr; canvas.height = rect.height * dpr;
+  const ctx = canvas.getContext('2d'); ctx.scale(dpr, dpr);
+  const w = rect.width, h = rect.height;
+  const cx = w/2, cy = h/2 + 6, r = Math.min(w,h)/2 - 32;
+  const labels = ['元气','嘴角','眉眼','眼神','气色','皮肤','开心','自然'];
+  const N = labels.length;
+  const angles = Array.from({length:N+1}, (_,i) => (i/N)*Math.PI*2 - Math.PI/2);
+
+  ctx.setTransform(dpr,0,0,dpr,0,0); ctx.scale(dpr,dpr); ctx.clearRect(0,0,w,h);
+
+  ctx.strokeStyle = 'rgba(248,195,205,0.35)'; ctx.lineWidth = 1;
+  for (let level=1; level<=5; level++) {
+    ctx.beginPath();
+    angles.forEach((a,i) => { const rr=(r/5)*level; ctx.lineTo(cx+Math.cos(a)*rr, cy+Math.sin(a)*rr); });
+    ctx.stroke();
+  }
+  angles.slice(0,-1).forEach(a => { ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(cx+Math.cos(a)*r, cy+Math.sin(a)*r); ctx.stroke(); });
+  ctx.font = 'bold 11px -apple-system, PingFang SC'; ctx.fillStyle = '#4A3B3B'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  angles.slice(0,-1).forEach((a,i) => { const lr = r + 16; ctx.fillText(labels[i], cx+Math.cos(a)*lr, cy+Math.sin(a)*lr); });
+
+  ctx.beginPath(); ctx.strokeStyle = '#E89B88'; ctx.lineWidth = 2.5;
+  angles.forEach((a,i) => { const rr=(today[i%N]/100)*r; ctx.lineTo(cx+Math.cos(a)*rr, cy+Math.sin(a)*rr); });
+  ctx.stroke(); ctx.fillStyle = 'rgba(255,183,165,0.18)'; ctx.fill();
+  ctx.fillStyle = '#E89B88';
+  angles.slice(0,-1).forEach((a,i) => { const rr=(today[i]/100)*r; ctx.beginPath(); ctx.arc(cx+Math.cos(a)*rr, cy+Math.sin(a)*rr, 4, 0, Math.PI*2); ctx.fill(); ctx.strokeStyle='#fff'; ctx.lineWidth=1.5; ctx.stroke(); });
+}
+
+// ===================== 详情面板 =====================
+function openDetail(idx) {
+  const d = window._dimensionData[idx];
+  if (!d) return;
+  const sheet = document.getElementById('detailSheet');
+  sheet.style.transform = '';
+  document.getElementById('detailName').textContent = d.name;
+  document.getElementById('detailScore').textContent = d.score + '分';
+  document.getElementById('detailMeasure').innerHTML = '测量值：<strong>' + d.measure + '</strong> ' + d.unit;
+  document.getElementById('detailRange').textContent = '参考范围：' + d.range + '（' + d.rangeLabel + '）';
+  document.getElementById('detailText').textContent = d.text;
+
+  const bar = document.getElementById('detailProgress');
+  bar.style.width = '0%';
+  setTimeout(() => { bar.style.width = Math.min(100, d.progress) + '%'; }, 80);
+
+  document.getElementById('detailOverlay').classList.add('active');
+  sheet.classList.add('active');
+}
+function closeDetail() {
+  document.getElementById('detailOverlay').classList.remove('active');
+  document.getElementById('detailSheet').classList.remove('active');
+}
+
+// 手势拖拽关闭
+(function() {
+  let startY = 0, currentY = 0, dragging = false;
+  const sheet = document.getElementById('detailSheet');
+  if (!sheet) return;
+  sheet.addEventListener('touchstart', e => { startY = e.touches[0].clientY; dragging = true; sheet.style.transition = 'none'; });
+  sheet.addEventListener('touchmove', e => {
+    if (!dragging) return;
+    currentY = e.touches[0].clientY;
+    const delta = Math.max(0, currentY - startY);
+    sheet.style.transform = 'translateY(' + delta + 'px)';
+  });
+  sheet.addEventListener('touchend', () => {
+    dragging = false; sheet.style.transition = '';
+    if (currentY - startY > 80) closeDetail();
+    else sheet.style.transform = 'translateY(0)';
+  });
+})();
+
+function retake() {
+  location.reload();
+}
+</script>
+</body>
+</html>
