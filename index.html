@@ -109,6 +109,80 @@ html, body { width: 100%; height: 100%; font-family: -apple-system, BlinkMacSyst
 .guide-step-text { font-size: 14px; color: var(--text-dark); line-height: 1.6; }
 .guide-btn { padding: 16px 52px; border: none; border-radius: 32px; background: linear-gradient(135deg, var(--peach-dark), var(--peach)); color: white; font-size: 17px; font-weight: 600; box-shadow: 0 8px 24px rgba(232,155,136,0.4); cursor: pointer; }
 .guide-note { font-size: 12px; color: var(--text-light); margin-top: 16px; }
+/* ===== 设置页 ===== */
+#settingsPage { background: var(--cream); justify-content: flex-start; padding: 40px 20px 20px; }
+.settings-title { font-size: 24px; font-weight: 700; margin-bottom: 24px; text-align: center; }
+.settings-group { width: 100%; max-width: 360px; background: var(--white); border-radius: 20px; padding: 16px 20px; box-shadow: 0 4px 16px rgba(232,155,136,0.15); margin-bottom: 16px; }
+.settings-group-title { font-size: 14px; color: var(--text-light); font-weight: 600; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 1px; }
+.settings-item { display: flex; justify-content: space-between; align-items: center; padding: 14px 0; border-bottom: 1px solid rgba(248,195,205,0.2); }
+.settings-item:last-child { border: none; }
+.settings-item-label { font-size: 15px; color: var(--text-dark); }
+.settings-item-desc { font-size: 12px; color: var(--text-light); margin-top: 2px; }
+.settings-item-right { display: flex; align-items: center; gap: 8px; }
+.toggle { width: 48px; height: 28px; border-radius: 14px; background: #ddd; position: relative; cursor: pointer; transition: background 0.3s; }
+.toggle.on { background: var(--peach); }
+.toggle::after { content: ''; position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.2); transition: transform 0.3s; }
+.toggle.on::after { transform: translateX(20px); }
+.settings-btn-row { display: flex; gap: 10px; margin-top: 8px; }
+.settings-select-btn { padding: 6px 14px; border-radius: 14px; font-size: 13px; border: 1.5px solid var(--rose); background: var(--white); color: var(--text-light); cursor: pointer; }
+.settings-select-btn.active { background: var(--peach); color: white; border-color: var(--peach-dark); }
+.back-btn { position: absolute; top: 16px; left: 16px; width: 36px; height: 36px; border-radius: 50%; background: var(--white); border: 1px solid var(--rose); display: flex; align-items: center; justify-content: center; font-size: 18px; color: var(--text-dark); cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.06); z-index: 10; }
+
+/* ===== 日签页 ===== */
+#cardPage { background: var(--cream); padding: 16px; align-items: center; justify-content: flex-start; overflow-y: auto; }
+.card-theme-selector { display: flex; gap: 8px; margin-bottom: 16px; overflow-x: auto; padding: 4px; max-width: 360px; width: 100%; }
+.theme-chip { padding: 6px 14px; border-radius: 16px; font-size: 12px; border: 1.5px solid var(--rose); background: var(--white); color: var(--text-light); cursor: pointer; white-space: nowrap; transition: all 0.2s; }
+.theme-chip.active { background: var(--peach); color: white; border-color: var(--peach-dark); }
+.card-preview { width: 100%; max-width: 360px; aspect-ratio: 9/16; background: var(--white); border-radius: 24px; box-shadow: 0 12px 40px rgba(0,0,0,0.08); border: 2px solid var(--rose); overflow: hidden; position: relative; display: flex; flex-direction: column; align-items: center; padding: 32px 24px; }
+.card-deco { position: absolute; top: 0; left: 0; width: 100%; height: 80px; background: linear-gradient(90deg, rgba(244,208,63,0.3), #FFF8F0); opacity: 0.6; }
+.card-date { font-size: 13px; color: var(--text-light); z-index: 1; margin-top: 8px; }
+.card-title { font-size: 22px; color: var(--peach-dark); font-weight: 700; z-index: 1; margin-top: 16px; }
+.card-photo { width: 140px; height: 140px; border-radius: 50%; background: linear-gradient(180deg, var(--lavender), var(--rose)); margin-top: 20px; display: flex; align-items: center; justify-content: center; color: var(--text-light); font-size: 14px; border: 4px solid var(--rose); overflow: hidden; }
+.card-photo img { width: 100%; height: 100%; object-fit: cover; }
+.card-score { font-size: 64px; color: var(--peach-dark); font-weight: 700; margin-top: 12px; }
+.card-keyword { margin-top: 8px; padding: 6px 20px; border-radius: 16px; background: rgba(255,183,165,0.2); color: var(--peach-dark); font-size: 13px; font-weight: 600; }
+.card-divider { width: 60%; height: 1px; background: linear-gradient(90deg, transparent, var(--rose), transparent); margin: 16px 0; }
+.card-quote { font-size: 16px; color: var(--text-dark); font-style: italic; text-align: center; line-height: 1.8; }
+.card-yiji { display: flex; width: 100%; justify-content: space-around; margin-top: auto; padding-bottom: 8px; }
+.yiji-block { text-align: center; }
+.yiji-label { font-size: 12px; color: var(--text-light); font-weight: 600; }
+.yiji-val { font-size: 13px; color: var(--text-dark); margin-top: 4px; }
+.card-sign { font-size: 12px; color: var(--text-light); margin-top: 12px; }
+.card-actions { display: flex; gap: 12px; margin-top: 20px; }
+.card-btn { padding: 12px 32px; border-radius: 24px; border: none; font-size: 14px; font-weight: 600; cursor: pointer; }
+
+/* ===== 时光机 ===== */
+#timelinePage { background: var(--cream); justify-content: flex-start; padding: 40px 20px 20px; overflow-y: auto; }
+.timeline-header { text-align: center; margin-bottom: 24px; }
+.timeline-header h2 { font-size: 22px; }
+.timeline-header p { font-size: 13px; color: var(--text-light); margin-top: 6px; }
+.trend-chart { width: 100%; max-width: 360px; height: 200px; background: var(--white); border-radius: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.04); padding: 16px; position: relative; }
+#trendCanvas { width: 100%; height: 100%; }
+.timeline-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 20px; max-width: 360px; width: 100%; }
+.timeline-cell { aspect-ratio: 1; border-radius: 16px; background: var(--white); border: 1.5px solid var(--rose); display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 12px; color: var(--text-light); position: relative; }
+.timeline-cell .t-score { font-size: 20px; font-weight: 700; color: var(--peach-dark); }
+.timeline-cell .t-day { font-size: 11px; margin-top: 4px; }
+.timeline-cell.best { border-color: var(--gold); background: #FFF8E0; }
+.timeline-compare { width: 100%; max-width: 360px; margin-top: 20px; background: var(--white); border-radius: 20px; padding: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.04); }
+.compare-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid rgba(248,195,205,0.2); }
+.compare-row:last-child { border: none; }
+.compare-label { font-size: 13px; color: var(--text-light); }
+.compare-val { font-size: 14px; color: var(--text-dark); font-weight: 600; }
+.compare-val.up { color: #E74C3C; }
+
+/* ===== 人格选择页 ===== */
+#personaPage { background: var(--cream); padding: 60px 24px 24px; justify-content: flex-start; overflow-y: auto; }
+.persona-title { font-size: 24px; font-weight: 700; text-align: center; margin-bottom: 8px; }
+.persona-sub { font-size: 14px; color: var(--text-light); text-align: center; margin-bottom: 32px; }
+.persona-list { width: 100%; max-width: 360px; display: flex; flex-direction: column; gap: 14px; }
+.persona-card { background: var(--white); border-radius: 20px; padding: 20px 24px; border: 2px solid transparent; cursor: pointer; transition: all 0.3s; box-shadow: 0 4px 16px rgba(232,155,136,0.15); position: relative; }
+.persona-card.selected { border-color: var(--peach); box-shadow: 0 6px 24px rgba(232,155,136,0.25); }
+.persona-card.selected::after { content: '\2713'; position: absolute; top: 16px; right: 16px; width: 24px; height: 24px; border-radius: 50%; background: var(--peach-dark); color: white; font-size: 14px; display: flex; align-items: center; justify-content: center; }
+.persona-name { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+.persona-call { font-size: 13px; color: var(--peach-dark); margin-bottom: 8px; }
+.persona-desc { font-size: 14px; color: var(--text-light); line-height: 1.6; }
+.persona-tag { display: inline-block; margin-top: 10px; padding: 4px 12px; border-radius: 12px; font-size: 12px; background: rgba(255,183,165,0.15); color: var(--peach-dark); }
+
 </style>
 </head>
 <body>
@@ -170,6 +244,7 @@ html, body { width: 100%; height: 100%; font-family: -apple-system, BlinkMacSyst
 
 <!-- ===== 结果页 ===== -->
 <div id="resultPage" class="page">
+  <div style="position:absolute;top:12px;right:16px;z-index:10;font-size:20px;cursor:pointer;color:var(--text-light);" onclick="goTo('settingsPage')">&#9881;</div>
   <div class="result-header">
     <img class="snap-thumb" id="snapThumb" src="" alt="">
     <div class="result-vitality" id="vitalityScore">0</div>
@@ -183,7 +258,9 @@ html, body { width: 100%; height: 100%; font-family: -apple-system, BlinkMacSyst
     <div class="advice-tags" id="adviceTags"></div>
   </div>
   <div class="result-actions">
-    <button class="result-btn btn-ghost" onclick="retake()">再拍一张</button>
+    <button class="result-btn btn-primary" onclick="goTo('cardPage')">&#128247; 生成日签</button>
+    <button class="result-btn btn-ghost" onclick="goTo('timelinePage')">&#128200; 时光机</button>
+    <button class="result-btn btn-ghost" onclick="retake()">&#8634; 再拍一张</button>
   </div>
 </div>
 
@@ -219,6 +296,9 @@ function dist(a, b) { return Math.sqrt((a.x-b.x)**2 + (a.y-b.y)**2); }
 function goTo(pageId) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById(pageId).classList.add('active');
+  if (pageId === 'timelinePage') { setTimeout(() => { drawRealTrend(); renderTimeline(); }, 300); }
+  if (pageId === 'cardPage') { setTimeout(() => { updateCardPage(); }, 100); }
+  if (pageId === 'settingsPage') { const pd = document.getElementById('currentPersonaDesc'); if (pd) pd.textContent = currentPersona + ' · ' + (currentPersona === '小暖' ? '温柔细腻' : currentPersona === '阿盐' ? '直率接地气' : currentPersona === '鹿鹿' ? '元气俏皮' : '知性冷静'); }
 }
 
 function createParticles() {
@@ -682,6 +762,10 @@ function computeAndShowResults(lm, sourceCanvas) {
       { name: '表情自然', score: Math.round(exScore), measure: `${(symY*100).toFixed(1)}%`, unit: '左右嘴角高度差 / 脸宽', range: '<3%为自然', rangeLabel: '越低越对称', progress: Math.min(100, exScore), text: `面部左右对称偏差${(symY * 100).toFixed(1)}%。${symY < 0.03 ? '表情非常对称，没有刻意控制或紧张。' : '稍微有点不对称，可能是习惯性表情，完全正常。'}` }
     ];
 
+    // 保存到当前会话
+    currentSession = {vitality, scores, mouthCurveRaw, ear, symY, avgR, avgG, avgB, date: new Date().toISOString().split('T')[0]};
+    saveToHistory(currentSession);
+
     goTo('resultPage');
   } catch (e) {
     console.error('结果计算失败:', e);
@@ -767,6 +851,392 @@ function closeDetail() {
 function retake() {
   location.reload();
 }
+
+// ===================== 数据存储与扩展功能 =====================
+let currentSession = { vitality: 0, scores: [], mouthCurveRaw: 0, ear: 0, symY: 0, avgR: 0, avgG: 0, avgB: 0, date: '' };
+let currentPersona = localStorage.getItem('yuanqijing_persona') || '小暖';
+
+function getTodayStr() {
+  const d = new Date();
+  return `${d.getMonth()+1}月${d.getDate()}日`;
+}
+function getShortDate() {
+  const d = new Date();
+  return `${d.getMonth()+1}.${d.getDate()}`;
+}
+function saveToHistory(session) {
+  let history = JSON.parse(localStorage.getItem('yuanqijing_history') || '[]');
+  history.push({
+    date: session.date,
+    vitality: session.vitality,
+    scores: session.scores,
+    mouthCurve: session.mouthCurveRaw,
+    ear: session.ear,
+    sym: session.symY
+  });
+  if (history.length > 30) history = history.slice(-30);
+  localStorage.setItem('yuanqijing_history', JSON.stringify(history));
+}
+function getHistory() {
+  return JSON.parse(localStorage.getItem('yuanqijing_history') || '[]');
+}
+
+function setPersona(name) {
+  currentPersona = name;
+  localStorage.setItem('yuanqijing_persona', name);
+}
+
+function selectPersona(el, name) {
+  document.querySelectorAll('.persona-card').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+  setPersona(name);
+}
+
+function toggleSwitch(el) {
+  el.classList.toggle('on');
+}
+
+function setTheme(el, theme) {
+  document.querySelectorAll('.theme-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  const preview = document.getElementById('cardPreview');
+  const scoreEl = document.getElementById('cardScore');
+  const score = parseInt(scoreEl.textContent) || 82;
+  const themes = {
+    standard: { border: '#F8C3CD', title: '今日元气签', keyword: score > 80 ? '温柔发光' : '状态在线', quote: score > 80 ? '"你笑起来，世界就亮了一半"' : '"今天的你，有属于自己的光"', yi: '穿浅色 · 约闺蜜', ji: '熬夜 · 皱眉' },
+    weekend: { border: '#B5EAD7', title: '周末元气签', keyword: '自在如风', quote: '"周末的你，值得用最松弛的状态度过"', yi: '睡懒觉 · 晒太阳', ji: '看邮件 · 设闹钟' },
+    work: { border: '#E8D5B7', title: '职场元气签', keyword: '干练利落', quote: '"今天的你，认真起来闪闪发光"', yi: '列清单 · 多喝水', ji: '拖延 · 久坐' },
+    exam: { border: '#B8D4E3', title: '考试元气签', keyword: '稳如泰山', quote: '"你准备得很充分，只管自信上场"', yi: '深呼吸 · 早睡觉', ji: '临时抱佛脚 · 焦虑' },
+    highlight: { border: '#F4D03F', title: '高光元气签', keyword: '光芒万丈', quote: '"今天的状态，是最近的高光时刻"', yi: '记录这一刻 · 犒劳自己', ji: '低调 · 谦虚' }
+  };
+  const t = themes[theme] || themes.standard;
+  preview.style.borderColor = t.border;
+  preview.querySelector('.card-title').textContent = t.title;
+  preview.querySelector('.card-keyword').textContent = '今日关键词：' + t.keyword;
+  preview.querySelector('.card-quote').textContent = t.quote;
+  const yiji = preview.querySelectorAll('.yiji-val');
+  if (yiji[0]) yiji[0].textContent = t.yi;
+  if (yiji[1]) yiji[1].textContent = t.ji;
+}
+
+function generateCardCanvas() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 1080; canvas.height = 1920;
+  const ctx = canvas.getContext('2d');
+  
+  const grd = ctx.createLinearGradient(0, 0, 1080, 1920);
+  grd.addColorStop(0, '#FFF8F0'); grd.addColorStop(1, '#F8E0D8');
+  ctx.fillStyle = grd; ctx.fillRect(0, 0, 1080, 1920);
+  
+  ctx.fillStyle = 'rgba(244,208,63,0.3)';
+  ctx.fillRect(0, 0, 1080, 200);
+  
+  ctx.fillStyle = '#8B7B7B'; ctx.font = '36px sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText(getTodayStr(), 540, 160);
+  
+  ctx.fillStyle = '#E89B88'; ctx.font = 'bold 56px sans-serif';
+  ctx.fillText('今日元气签', 540, 280);
+  
+  const score = currentSession.vitality || 82;
+  
+  if (snapDataUrl) {
+    const img = new Image();
+    img.onload = function() {
+      ctx.save();
+      ctx.beginPath(); ctx.arc(540, 520, 200, 0, Math.PI * 2); ctx.clip();
+      ctx.drawImage(img, 340, 320, 400, 400);
+      ctx.restore();
+      ctx.strokeStyle = '#F8C3CD'; ctx.lineWidth = 12;
+      ctx.beginPath(); ctx.arc(540, 520, 206, 0, Math.PI * 2); ctx.stroke();
+      finalizeCard(ctx, score);
+    };
+    img.src = snapDataUrl;
+  } else {
+    ctx.fillStyle = '#E6E6FA'; ctx.beginPath(); ctx.arc(540, 520, 200, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#8B7B7B'; ctx.font = '36px sans-serif'; ctx.fillText('[自拍]', 540, 530);
+    finalizeCard(ctx, score);
+  }
+  return canvas;
+}
+
+function finalizeCard(ctx, score) {
+  ctx.fillStyle = '#E89B88'; ctx.font = 'bold 180px sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText(String(score), 540, 880);
+  
+  ctx.fillStyle = 'rgba(232,155,136,0.2)';
+  ctx.beginPath(); ctx.roundRect(320, 920, 440, 60, 30); ctx.fill();
+  ctx.fillStyle = '#E89B88'; ctx.font = 'bold 32px sans-serif';
+  ctx.fillText('今日关键词：温柔发光', 540, 960);
+  
+  ctx.strokeStyle = 'rgba(248,195,205,0.5)'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(300, 1020); ctx.lineTo(780, 1020); ctx.stroke();
+  
+  ctx.fillStyle = '#4A3B3B'; ctx.font = 'italic 40px sans-serif';
+  const quote = score > 80 ? '"你笑起来，世界就亮了一半"' : '"今天的你，有属于自己的光"';
+  ctx.fillText(quote, 540, 1120);
+  
+  ctx.fillStyle = '#8B7B7B'; ctx.font = 'bold 28px sans-serif'; ctx.textAlign = 'left';
+  ctx.fillText('今日宜', 280, 1260); ctx.fillText('今日忌', 600, 1260);
+  ctx.fillStyle = '#4A3B3B'; ctx.font = '28px sans-serif';
+  ctx.fillText('穿浅色 · 约闺蜜', 280, 1310); ctx.fillText('熬夜 · 皱眉', 600, 1310);
+  
+  ctx.fillStyle = '#8B7B7B'; ctx.font = '24px sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText('— 你的元气镜', 540, 1700);
+}
+
+function downloadCard() {
+  const canvas = generateCardCanvas();
+  setTimeout(() => {
+    const link = document.createElement('a');
+    link.download = '元气签_' + new Date().toISOString().split('T')[0] + '.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  }, 600);
+}
+
+function drawRealTrend() {
+  const canvas = document.getElementById('trendCanvas');
+  if (!canvas) return;
+  const history = getHistory();
+  const data = history.slice(-7).map(h => h.vitality);
+  const days = history.slice(-7).map(h => { const p = h.date.split('-'); return p[1] + '.' + p[2]; });
+  while (data.length < 7) { data.unshift(null); days.unshift(''); }
+  
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width * dpr; canvas.height = rect.height * dpr;
+  const ctx = canvas.getContext('2d'); ctx.scale(dpr, dpr);
+  const w = rect.width, h = rect.height, pad = 28;
+  
+  ctx.clearRect(0, 0, w, h);
+  ctx.strokeStyle = 'rgba(248,195,205,0.25)'; ctx.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) { const y = pad + (h - 2 * pad) * (i / 4); ctx.beginPath(); ctx.moveTo(pad, y); ctx.lineTo(w - pad, y); ctx.stroke(); }
+  
+  const validData = data.filter(v => v !== null);
+  if (validData.length > 1) {
+    ctx.beginPath(); ctx.strokeStyle = '#E89B88'; ctx.lineWidth = 2.5; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    const step = (w - 2 * pad) / (data.length - 1);
+    let first = true;
+    data.forEach((v, i) => {
+      if (v === null) return;
+      const x = pad + i * step; const y = pad + (h - 2 * pad) * (1 - (v - 50) / 50);
+      if (first) { ctx.moveTo(x, y); first = false; }
+      else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+    
+    data.forEach((v, i) => {
+      if (v === null) return;
+      const x = pad + i * step, y = pad + (h - 2 * pad) * (1 - (v - 50) / 50);
+      ctx.beginPath(); ctx.fillStyle = i === data.length - 1 ? '#E89B88' : '#fff'; ctx.arc(x, y, i === data.length - 1 ? 6 : 4, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#E89B88'; ctx.lineWidth = 2; ctx.stroke();
+      ctx.fillStyle = '#4A3B3B'; ctx.font = '10px sans-serif'; ctx.textAlign = 'center'; ctx.fillText(v, x, y - 10);
+    });
+  }
+  days.forEach((d, i) => { if (d) { const x = pad + i * ((w - 2 * pad) / (data.length - 1)); ctx.fillStyle = '#8B7B7B'; ctx.font = '9px sans-serif'; ctx.textAlign = 'center'; ctx.fillText(d, x, h - 6); } });
+  ctx.fillStyle = '#4A3B3B'; ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'left'; ctx.fillText('7 日元气趋势', pad, 16);
+}
+
+function renderTimeline() {
+  const history = getHistory();
+  const grid = document.getElementById('timelineGrid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  const recent = history.slice(-7);
+  let maxV = 0, maxIdx = -1;
+  recent.forEach((h, i) => { if (h.vitality > maxV) { maxV = h.vitality; maxIdx = i; } });
+  
+  recent.forEach((h, i) => {
+    const div = document.createElement('div');
+    div.className = 'timeline-cell' + (i === maxIdx ? ' best' : '');
+    const p = h.date.split('-');
+    div.innerHTML = `<span class="t-score">${h.vitality}</span><span class="t-day">${p[1]}.${p[2]}</span>`;
+    grid.appendChild(div);
+  });
+  while (grid.children.length < 7) {
+    const div = document.createElement('div');
+    div.className = 'timeline-cell'; div.style = 'border-style:dashed;opacity:0.5';
+    div.innerHTML = '<span class="t-score">?</span><span class="t-day">-</span>';
+    grid.appendChild(div);
+  }
+  const today = recent[recent.length - 1];
+  const yesterday = recent.length > 1 ? recent[recent.length - 2] : null;
+  const diff = yesterday ? today.vitality - yesterday.vitality : 0;
+  const avg = recent.length ? Math.round(recent.reduce((a,b) => a + b.vitality, 0) / recent.length) : 0;
+  
+  const compareEl = document.querySelector('.timeline-compare');
+  if (compareEl) {
+    compareEl.innerHTML = `
+      <div class="compare-row"><span class="compare-label">相比昨天</span><span class="compare-val ${diff >= 0 ? 'up' : ''}">${diff >= 0 ? '+' : ''}${diff}</span></div>
+      <div class="compare-row"><span class="compare-label">本周最高</span><span class="compare-val">${maxV}${maxIdx === recent.length - 1 ? '（今天）' : ''}</span></div>
+      <div class="compare-row"><span class="compare-label">${recent.length}天平均</span><span class="compare-val">${avg}</span></div>
+    `;
+  }
+}
+
+function exportData() {
+  const history = getHistory();
+  const blob = new Blob([JSON.stringify(history, null, 2)], {type: 'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = '元气镜数据_' + new Date().toISOString().split('T')[0] + '.json';
+  a.click(); URL.revokeObjectURL(url);
+}
+
+function updateCardPage() {
+  const el = document.getElementById('cardScore');
+  if (el) el.textContent = currentSession.vitality || 82;
+  const dateEl = document.getElementById('cardDate');
+  if (dateEl) dateEl.textContent = getTodayStr();
+  const photoEl = document.getElementById('cardPhoto');
+  if (photoEl && snapDataUrl) photoEl.innerHTML = '<img src="' + snapDataUrl + '" alt="">';
+}
+
 </script>
+
+<!-- ===== 日签页 ===== -->
+<div id="cardPage" class="page">
+  <div class="back-btn" onclick="goTo('resultPage')">&#8592;</div>
+  <div class="card-theme-selector">
+    <div class="theme-chip active" onclick="setTheme(this,'standard')">标准版</div>
+    <div class="theme-chip" onclick="setTheme(this,'weekend')">周末</div>
+    <div class="theme-chip" onclick="setTheme(this,'work')">职场</div>
+    <div class="theme-chip" onclick="setTheme(this,'exam')">加油</div>
+    <div class="theme-chip" onclick="setTheme(this,'highlight')">高光</div>
+  </div>
+  <div class="card-preview" id="cardPreview">
+    <div class="card-deco"></div>
+    <div class="card-date" id="cardDate">今日</div>
+    <div class="card-title">今日元气签</div>
+    <div class="card-photo" id="cardPhoto">[自拍]</div>
+    <div class="card-score" id="cardScore">82</div>
+    <div class="card-keyword">今日关键词：温柔发光</div>
+    <div class="card-divider"></div>
+    <div class="card-quote">"你笑起来，世界就亮了一半"</div>
+    <div class="card-yiji">
+      <div class="yiji-block"><div class="yiji-label">今日宜</div><div class="yiji-val">穿浅色 · 约闺蜜</div></div>
+      <div class="yiji-block"><div class="yiji-label">今日忌</div><div class="yiji-val">熬夜 · 皱眉</div></div>
+    </div>
+    <div class="card-sign">— 你的元气镜</div>
+  </div>
+  <div class="card-actions">
+    <button class="card-btn btn-primary" onclick="downloadCard()">保存图片</button>
+    <button class="card-btn btn-ghost" onclick="alert('分享功能即将上线')">分享</button>
+  </div>
+</div>
+
+<!-- ===== 时光机 ===== -->
+<div id="timelinePage" class="page">
+  <div class="back-btn" onclick="goTo('resultPage')">&#8592;</div>
+  <div class="timeline-header">
+    <h2>你的元气时光机</h2>
+    <p>7 天前 vs 今天，你在慢慢变得更好</p>
+  </div>
+  <div class="trend-chart"><canvas id="trendCanvas"></canvas></div>
+  <div class="timeline-grid" id="timelineGrid"></div>
+  <div class="timeline-compare">
+    <div class="compare-row"><span class="compare-label">相比昨天</span><span class="compare-val">—</span></div>
+    <div class="compare-row"><span class="compare-label">本周最高</span><span class="compare-val">—</span></div>
+    <div class="compare-row"><span class="compare-label">7天平均</span><span class="compare-val">—</span></div>
+  </div>
+</div>
+
+<!-- ===== 设置页 ===== -->
+<div id="settingsPage" class="page">
+  <div class="back-btn" onclick="goTo('resultPage')">&#8592;</div>
+  <div class="settings-title">设置</div>
+  <div class="settings-group">
+    <div class="settings-group-title">元气伴侣</div>
+    <div class="settings-item">
+      <div>
+        <div class="settings-item-label">当前人格</div>
+        <div class="settings-item-desc" id="currentPersonaDesc">小暖 · 温柔细腻</div>
+      </div>
+      <div class="settings-item-right"><button class="settings-select-btn" onclick="goTo('personaPage')">更换</button></div>
+    </div>
+  </div>
+  <div class="settings-group">
+    <div class="settings-group-title">隐私与关怀</div>
+    <div class="settings-item">
+      <div>
+        <div class="settings-item-label">经期关怀</div>
+        <div class="settings-item-desc">特殊时期自动调整分析和文案</div>
+      </div>
+      <div class="settings-item-right"><div class="toggle" id="toggleMenstrual" onclick="toggleSwitch(this)"></div></div>
+    </div>
+    <div class="settings-item">
+      <div>
+        <div class="settings-item-label">100% 离线模式</div>
+        <div class="settings-item-desc">照片和分析不上传任何云端</div>
+      </div>
+      <div class="settings-item-right"><div class="toggle on" onclick="toggleSwitch(this)"></div></div>
+    </div>
+  </div>
+  <div class="settings-group">
+    <div class="settings-group-title">存储管理</div>
+    <div class="settings-item">
+      <div>
+        <div class="settings-item-label">精选照片保留</div>
+        <div class="settings-item-desc">最多保留3张最高分原图</div>
+      </div>
+      <div class="settings-item-right">
+        <div class="settings-btn-row">
+          <button class="settings-select-btn active">3张</button>
+          <button class="settings-select-btn">5张</button>
+          <button class="settings-select-btn">不存</button>
+        </div>
+      </div>
+    </div>
+    <div class="settings-item">
+      <div>
+        <div class="settings-item-label">数据导出</div>
+        <div class="settings-item-desc">将所有历史数据打包导出</div>
+      </div>
+      <div class="settings-item-right"><button class="settings-select-btn" onclick="exportData()">导出</button></div>
+    </div>
+  </div>
+  <div class="settings-group">
+    <div class="settings-group-title">关于</div>
+    <div class="settings-item">
+      <div class="settings-item-label">元气镜 · 真机体验版</div>
+      <div class="settings-item-right"><span style="font-size:12px;color:var(--text-light)">每天一拍，看见更闪光的自己</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 人格选择页 ===== -->
+<div id="personaPage" class="page">
+  <div class="back-btn" onclick="goTo('settingsPage')">&#8592;</div>
+  <div class="persona-title">选择你的元气伴侣</div>
+  <div class="persona-sub">不同的性格，会给你带来不一样的陪伴体验</div>
+  <div class="persona-list">
+    <div class="persona-card selected" onclick="selectPersona(this, '小暖')">
+      <div class="persona-name">小暖</div>
+      <div class="persona-call">称呼你：宝 / 宝贝</div>
+      <div class="persona-desc">温柔、细腻、会心疼人。发现你累了会劝休息，从来不push你。适合敏感型、需要情绪支持的你。</div>
+      <span class="persona-tag">推荐</span>
+    </div>
+    <div class="persona-card" onclick="selectPersona(this, '阿盐')">
+      <div class="persona-name">阿盐</div>
+      <div class="persona-call">称呼你：姐妹 / 姐妹儿</div>
+      <div class="persona-desc">直率、毒舌但暖、接地气。"你这黑眼圈，昨晚又肝到几点？"适合大大咧咧、抗打击的你。</div>
+      <span class="persona-tag">接地气</span>
+    </div>
+    <div class="persona-card" onclick="selectPersona(this, '鹿鹿')">
+      <div class="persona-name">鹿鹿</div>
+      <div class="persona-call">称呼你：你呀（或直接不叫）</div>
+      <div class="persona-desc">元气、俏皮、emoji多。"今天的你在发光诶！"适合年轻、喜欢可爱风的你。</div>
+      <span class="persona-tag">可爱</span>
+    </div>
+    <div class="persona-card" onclick="selectPersona(this, '南姐')">
+      <div class="persona-name">南姐</div>
+      <div class="persona-call">称呼你：直接叫昵称</div>
+      <div class="persona-desc">知性、冷静、有分寸。"今天的气色数据不错，建议保持这个作息。"适合职场人、理性派。</div>
+      <span class="persona-tag">理性</span>
+    </div>
+  </div>
+  <button class="guide-btn" style="margin-top:24px" onclick="goTo('settingsPage')">确认选择</button>
+</div>
+
 </body>
 </html>
