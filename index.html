@@ -310,6 +310,9 @@ function onFaceResults(results) {
     const landmarks = results.multiFaceLandmarks[0];
     lastLandmarks = landmarks;
 
+    // 人脸验证：过滤小熊/玩偶等非人类目标
+    const isHuman = isRealHumanFace(landmarks);
+
     // 绘制网格
     drawConnectors(canvasCtx, landmarks, FACEMESH_TESSELATION, {color: 'rgba(255,183,165,0.25)', lineWidth: 1});
     drawConnectors(canvasCtx, landmarks, FACEMESH_FACE_OVAL, {color: 'rgba(255,183,165,0.5)', lineWidth: 1.5});
@@ -326,6 +329,19 @@ function onFaceResults(results) {
       canvasCtx.arc(lm.x * w, lm.y * h, 3, 0, Math.PI * 2);
       canvasCtx.fillStyle = '#FFB7A5';
       canvasCtx.fill();
+    }
+
+    if (!isHuman) {
+      statusEl.textContent = '● 检测到非人类目标，请对准真实人脸';
+      statusEl.className = 'cam-status error';
+      shutterBtn.disabled = true;
+      shutterBtn.style.opacity = '0.4';
+      document.getElementById('faceGuide').style.opacity = '1';
+      document.getElementById('liveMetrics').style.opacity = '0';
+      faceDetected = false;
+      if (faceLostTimer) { clearTimeout(faceLostTimer); faceLostTimer = null; }
+      canvasCtx.restore();
+      return;
     }
 
     statusEl.textContent = '● 已检测到人脸';
@@ -382,6 +398,51 @@ function updateLiveMetrics(lm) {
   // 对称偏差
   const sym = (Math.abs(lm[61].y - lm[291].y) / faceW * 100).toFixed(1);
   document.getElementById('mSym').textContent = sym + '%';
+}
+
+// ===================== 人脸验证工具 =====================
+function isRealHumanFace(lm) {
+  const faceW = dist(lm[234], lm[454]);
+  const faceH = dist(lm[10], lm[152]);
+  const aspectRatio = faceH / faceW;
+  
+  // 1. 面部宽高比：真实人脸通常 0.9-1.5，小熊/玩偶可能过扁或过高
+  if (aspectRatio < 0.75 || aspectRatio > 1.55) return false;
+  
+  // 2. 眼距比例：两眼内角间距 / 脸宽，真实人脸 0.25-0.42
+  const eyeDist = dist(lm[33], lm[263]);
+  const eyeDistRatio = eyeDist / faceW;
+  if (eyeDistRatio < 0.20 || eyeDistRatio > 0.48) return false;
+  
+  // 3. EAR：真实人眼 0.10-0.40，玩偶眼睛通常过大或完全闭合
+  const earL = (dist(lm[159], lm[145]) + dist(lm[158], lm[153])) / (2 * dist(lm[33], lm[133]));
+  const earR = (dist(lm[386], lm[374]) + dist(lm[385], lm[380])) / (2 * dist(lm[362], lm[263]));
+  const ear = (earL + earR) / 2;
+  if (ear < 0.08 || ear > 0.50) return false;
+  
+  // 4. 嘴部比例：上下唇中点距离 / 脸高，真实人脸 0.03-0.14
+  const mouthH = dist(lm[0], lm[17]);
+  const mouthRatio = mouthH / faceH;
+  if (mouthRatio < 0.02 || mouthRatio > 0.18) return false;
+  
+  // 5. 面部轮廓曲率：检查颧骨到下巴的弧度是否自然
+  const cheekL = lm[123].x;
+  const cheekR = 1 - lm[352].x;
+  const cheekSym = Math.abs(cheekL - cheekR);
+  if (cheekSym > 0.15) return false;
+  
+  return true;
+}
+
+// 估算年龄段，用于儿童评分校准
+function estimateAgeFactor(lm) {
+  const faceW = dist(lm[234], lm[454]);
+  const faceH = dist(lm[10], lm[152]);
+  const eyeDist = dist(lm[33], lm[263]);
+  const eyeRatio = eyeDist / faceW;
+  const aspectRatio = faceH / faceW;
+  if (eyeRatio > 0.36 && aspectRatio < 1.15) return 1.08;
+  return 1.0;
 }
 
 // ===================== 拍摄与分析 =====================
@@ -452,28 +513,37 @@ function computeAndShowResults(lm, sourceCanvas) {
   try {
     const faceW = dist(lm[234], lm[454]);
     const faceH = dist(lm[10], lm[152]);
+    const ageFactor = estimateAgeFactor(lm); // 儿童校准因子（1.0 或 1.08）
 
     // ---- 1. 嘴角弧度 (MC) ----
+    // 自然表情 mouthCurveRaw ≈ 0，目标 65 分
+    // 微笑 0.03 → 90 分，大笑 0.06 → 100 分
     const mouthCenterY = (lm[61].y + lm[291].y) / 2;
-    const mouthCurveRaw = (lm[0].y - mouthCenterY) / faceW; // 正值=上扬
-    const mcScore = Math.min(100, Math.max(0, 50 + mouthCurveRaw * 800));
+    const mouthCurveRaw = (lm[0].y - mouthCenterY) / faceW;
+    const mcScore = Math.min(100, Math.max(0, 65 + mouthCurveRaw * 600));
 
     // ---- 2. 眉眼精神 (BEE) ----
+    // 降低基准：EAR 基准 0.22（更贴近普通人），眉眼距基准 0.055
+    // 基础分 20 + 两个维度各 40 分，让普通人至少 60 分
     const browToEyeL = dist(lm[107], lm[159]) / faceH;
     const browToEyeR = dist(lm[336], lm[386]) / faceH;
     const browToEye = ((browToEyeL + browToEyeR) / 2);
     const earL = (dist(lm[159], lm[145]) + dist(lm[158], lm[153])) / (2 * dist(lm[33], lm[133]));
     const earR = (dist(lm[386], lm[374]) + dist(lm[385], lm[380])) / (2 * dist(lm[362], lm[263]));
     const ear = (earL + earR) / 2;
-    const beeScore = Math.min(100, Math.max(0, (browToEye / 0.065) * 50 + (ear / 0.25) * 50));
+    const beeScore = Math.min(100, Math.max(0,
+      20 +
+      Math.min(40, (browToEye / 0.055) * 40) +
+      Math.min(40, (ear / 0.22) * 40)
+    ));
 
     // ---- 3. 表情自然 (EX) ----
+    // 放宽对称性要求：偏差 3% 时 70 分，5% 时 50 分
     const symY = Math.abs(lm[61].y - lm[291].y) / faceW;
-    const exScore = Math.min(100, Math.max(0, 100 - symY * 2000));
+    const exScore = Math.min(100, Math.max(0, 100 - symY * 1000));
 
     // ---- 4. 从像素提取气色 & 皮肤 (sourceCanvas) ----
     const sctx = sourceCanvas.getContext('2d');
-    // 初始化像素变量，防止 getImageData 失败时未定义
     let avgR = 0, avgG = 0, avgB = 0, pxCount = 0;
     let grayVals = [];
 
@@ -483,7 +553,6 @@ function computeAndShowResults(lm, sourceCanvas) {
       const cheekX = Math.floor(lm[118].x * sw);
       const cheekY = Math.floor(lm[118].y * sh);
       const box = 20;
-      // 安全的边界检查
       const sx = Math.max(0, Math.min(sw - 1, cheekX - box));
       const sy = Math.max(0, Math.min(sh - 1, cheekY - box));
       const sW = Math.min(box * 2, sw - sx);
@@ -507,26 +576,26 @@ function computeAndShowResults(lm, sourceCanvas) {
       pxCount = 0;
     }
 
-    let cpScore = 72, skScore = 68;
+    // 气色默认 75（更合理），皮肤默认 75
+    let cpScore = 75, skScore = 75;
     if (pxCount > 0) {
-      // 简化的 Lab L 近似: 基于亮度
       const L = (Math.max(avgR, avgG, avgB) + Math.min(avgR, avgG, avgB)) / 2;
-      // 简化的 a 轴近似: 偏红度
       const a = (avgR - avgG) * 0.5 + 128;
-      cpScore = Math.min(100, Math.max(0, 60 + (L - 140) * 0.3 + (a - 135) * 1.5));
+      // 亮度 145 对应 75 分，偏红度 135 对应 75 分
+      cpScore = Math.min(100, Math.max(0, 75 + (L - 145) * 0.25 + (a - 135) * 1.0));
 
-      // 拉普拉斯方差近似
+      // 皮肤纹理：方差 40 对应 75 分，方差越高纹理越粗糙
       let mean = 0;
       for (const g of grayVals) mean += g;
       mean /= grayVals.length;
       let varSum = 0;
       for (const g of grayVals) varSum += (g - mean) ** 2;
       const variance = varSum / grayVals.length;
-      skScore = Math.min(100, Math.max(0, 100 - (variance - 50) * 0.3));
+      skScore = Math.min(100, Math.max(0, 100 - (variance - 30) * 0.25));
     }
 
     // ---- 5. 眼神光 (ES) ----
-    // 用眼睛区域平均亮度近似
+    // 默认 78，光线 120 对应 78 分
     let eyeBright = 0, eyeCount = 0;
     try {
       const sw = sourceCanvas.width, sh = sourceCanvas.height;
@@ -547,20 +616,38 @@ function computeAndShowResults(lm, sourceCanvas) {
       console.warn('眼神光提取失败:', e.message);
       eyeCount = 0;
     }
-    let esScore = 75;
+    let esScore = 78;
     if (eyeCount > 0) {
       eyeBright /= eyeCount;
-      esScore = Math.min(100, Math.max(0, (eyeBright / 2.55) * 0.8));
+      // 亮度 120 对应 75 分，线性映射
+      esScore = Math.min(100, Math.max(0, (eyeBright / 2.55) * 0.8 + 15));
     }
 
     // ---- 6. 开心指数 (HI) ----
-    // 基于嘴角弧度 + 眼睛眯起程度（Duchenne 简化）
-    const eyeSquint = Math.max(0, 1 - ear / 0.35); // EAR 越小 = 眯得越紧
-    const hiScore = Math.min(100, Math.max(0, mcScore * 0.5 + eyeSquint * 50 + 20));
+    // 提高基准：基础分 30 + 嘴角贡献 + 眯眼贡献
+    const eyeSquint = Math.max(0, 1 - ear / 0.35);
+    const hiScore = Math.min(100, Math.max(0, mcScore * 0.4 + eyeSquint * 35 + 30));
 
     // ---- 元气值加权 ----
-    const vitality = Math.round(mcScore * 0.20 + beeScore * 0.15 + esScore * 0.15 + cpScore * 0.15 + skScore * 0.10 + hiScore * 0.25);
-    const scores = [vitality, Math.round(mcScore), Math.round(beeScore), Math.round(esScore), Math.round(cpScore), Math.round(skScore), Math.round(hiScore), Math.round(exScore)];
+    // 权重微调：嘴角 20% + 眉眼 15% + 眼神光 15% + 气色 15% + 皮肤 10% + 开心 25%
+    let vitality = Math.round(
+      mcScore * 0.20 + beeScore * 0.15 + esScore * 0.15 +
+      cpScore * 0.15 + skScore * 0.10 + hiScore * 0.25
+    );
+
+    // 应用年龄校准（儿童加分，最多 +5 分）
+    vitality = Math.min(100, Math.round(vitality * ageFactor));
+
+    const scores = [
+      Math.min(100, Math.round(vitality)),
+      Math.min(100, Math.round(mcScore)),
+      Math.min(100, Math.round(beeScore)),
+      Math.min(100, Math.round(esScore)),
+      Math.min(100, Math.round(cpScore)),
+      Math.min(100, Math.round(skScore)),
+      Math.min(100, Math.round(hiScore)),
+      Math.min(100, Math.round(exScore))
+    ];
 
     // ===================== 渲染结果页 =====================
     document.getElementById('snapThumb').src = snapDataUrl;
@@ -610,15 +697,16 @@ function computeAndShowResults(lm, sourceCanvas) {
     });
 
     // 详情数据
+    const cheekGrayAvg = pxCount > 0 ? Math.round(grayVals.reduce((a,b)=>a+b,0)/grayVals.length) : 'N/A';
     window._dimensionData = [
       { name: '元气值', score: vitality, measure: String(vitality), unit: '综合分（加权）', range: '—', rangeLabel: '由7个维度加权计算', progress: vitality, text: `今天的元气值${vitality}分，由7个面部维度加权计算。${hiScore > 80 ? '开心指数是主要拉动项，你今天笑得很真实。' : '整体处于平稳区间，接纳此刻的自己。'}` },
       { name: '嘴角弧度', score: Math.round(mcScore), measure: mouthCurveRaw.toFixed(3), unit: '归一化比例（嘴角上扬 / 脸宽）', range: '-0.02 ~ 0.06', rangeLabel: '0.03以上为微笑区间', progress: Math.min(100, Math.max(0, (mouthCurveRaw + 0.02) / 0.08 * 100)), text: `嘴角上扬归一化比例${mouthCurveRaw.toFixed(3)}。${mouthCurveRaw > 0.03 ? '进入微笑区间，这个弧度很动人。' : (mouthCurveRaw < -0.01 ? '今天嘴角有点平静，也许只是没刻意笑。' : '是淡淡的温柔，不张扬。')}` },
       { name: '眉眼精神', score: Math.round(beeScore), measure: `${browToEye.toFixed(3)} / ${ear.toFixed(3)}`, unit: '眉眼距 / EAR', range: '0.05-0.08 / 0.22-0.28', rangeLabel: '精神区间', progress: Math.min(100, beeScore), text: `眉毛峰到眼睑归一化距离${browToEye.toFixed(3)}，眼睛纵横比(EAR)${ear.toFixed(3)}。${ear > 0.22 ? '眼睛睁得很有神。' : '眼睛处于放松状态，也许有点倦。'}` },
       { name: '眼神光', score: Math.round(esScore), measure: String(Math.round(eyeBright || 0)), unit: '瞳孔区域平均亮度（0-255）', range: '80 ~ 180', rangeLabel: '理想区间', progress: Math.min(100, (eyeBright || 100) / 2.55), text: `瞳孔区域平均亮度${Math.round(eyeBright || 0)}（0-255范围）。${esScore > 75 ? '这个亮度说明光线很好，也可能是你眼睛本身有光。' : '光线条件一般，试试面向窗户？'}` },
       { name: '气色指数', score: Math.round(cpScore), measure: pxCount > 0 ? `RGB(${Math.round(avgR)},${Math.round(avgG)},${Math.round(avgB)})` : 'N/A', unit: '脸颊像素均值', range: '亮度适中+偏红', rangeLabel: 'Lab L 140-180 / a 135-142', progress: Math.min(100, cpScore), text: pxCount > 0 ? `脸颊区域像素均值 RGB(${Math.round(avgR)}, ${Math.round(avgG)}, ${Math.round(avgB)})。${cpScore > 75 ? '肤色带有健康的红润色调。' : '亮度适中，保持好作息会更亮。'}` : '像素采样失败，可能是光线不足。' },
-      { name: '皮肤状态', score: Math.round(skScore), measure: pxCount > 0 ? Math.round((grayVals.reduce((a,b)=>a+b,0)/grayVals.length)) : 'N/A', unit: '灰度均值（纹理参考）', range: '80-150为细腻', rangeLabel: '拉普拉斯方差越低越细腻', progress: Math.min(100, skScore), text: pxCount > 0 ? `皮肤纹理灰度均值${Math.round((grayVals.reduce((a,b)=>a+b,0)/grayVals.length))}。${skScore > 70 ? '皮肤状态不错，毛孔和细纹表现良好。' : '今天皮肤纹理稍明显，也许没休息够？'}` : '像素采样失败。' },
+      { name: '皮肤状态', score: Math.round(skScore), measure: String(cheekGrayAvg), unit: '灰度均值（纹理参考）', range: '80-150为细腻', rangeLabel: '拉普拉斯方差越低越细腻', progress: Math.min(100, skScore), text: pxCount > 0 ? `皮肤纹理灰度均值${cheekGrayAvg}。${skScore > 70 ? '皮肤状态不错，毛孔和细纹表现良好。' : '今天皮肤纹理稍明显，也许没休息够？'}` : '像素采样失败。' },
       { name: '开心指数', score: Math.round(hiScore), measure: `EAR=${(ear*100).toFixed(1)}%`, unit: '眼睛纵横比（越低越眯）', range: '<130ms为真实笑容', rangeLabel: 'AU12+AU6同步（简化版）', progress: Math.min(100, hiScore), text: `嘴角上扬 + 眼睛眯起程度综合评估。EAR=${(ear*100).toFixed(1)}%，${ear < 0.28 ? '眼睛有配合嘴角一起动，这是真实笑容的信号。' : '是放松的面部表情。'}` },
-      { name: '表情自然', score: Math.round(exScore), measure: `${(symY*100).toFixed(1)}%`, unit: '左右嘴角高度差 / 脸宽', range: '<2%为自然', rangeLabel: '越低越对称', progress: Math.min(100, exScore), text: `面部左右对称偏差${(symY * 100).toFixed(1)}%。${symY < 0.02 ? '表情非常对称，没有刻意控制或紧张。' : '稍微有点不对称，可能是习惯性表情，完全正常。'}` }
+      { name: '表情自然', score: Math.round(exScore), measure: `${(symY*100).toFixed(1)}%`, unit: '左右嘴角高度差 / 脸宽', range: '<3%为自然', rangeLabel: '越低越对称', progress: Math.min(100, exScore), text: `面部左右对称偏差${(symY * 100).toFixed(1)}%。${symY < 0.03 ? '表情非常对称，没有刻意控制或紧张。' : '稍微有点不对称，可能是习惯性表情，完全正常。'}` }
     ];
 
     goTo('resultPage');
